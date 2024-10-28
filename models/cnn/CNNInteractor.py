@@ -56,7 +56,5 @@ class CNNInteractor:
                 if (max_index == label):
                     correct += 1
             break
-        accuracy = correct/total
-        print(f"Accuracy: {accuracy:.4f}")
-        return accuracy
+        return correct/total
 
