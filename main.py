@@ -1,27 +1,72 @@
-from mlp import MLPModel
+from models.cnn.CNN import CNN
+import os
+from models.cnn.CNNInteractor import CNNInteractor
 import tvm
 from tvm import relax
 from tvm.relax.frontend import nn
 import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torchvision.transforms as transforms
+from torchvision.datasets import MNIST
+from torch.utils.data import DataLoader
+from tvm.relax.frontend.torch import from_exported_program
+from torch.export import export
+
+
+def main():
+    # File Path to be used
+    file_path = 'models/cnn/cnn.pth'
+
+    # Load the Interactor
+    interactor = CNNInteractor()
+
+    # Load or train the model, depending on whether it is saved
+    model = CNN()
+    if os.path.exists(file_path):
+        model.load_state_dict(torch.load(file_path, weights_only=True))
+    else:
+        interactor.train(model, 5)
+        torch.save(model.state_dict(), file_path)
+    
+    model.eval()
+
+    # Target LLVM, CPU
+    target = tvm.target.Target("llvm")
+    device = tvm.cpu()
+    mod, params, vm = my_export(model, target, device)
+
+    while True:
+        # Accept input from user
+        choice = input("Enter 't' to test the model, 'r' to launch a Rowhammer attack, 'q' to quit: ")
+        if choice == 't':
+            interactor.test(model, params, vm)
+        elif choice == 'r':
+            print("Launching Rowhammer attack...")
+            my_rowhammer(params)
+        elif choice == 'q':
+            break
+
+
+
+def my_export(model, target, device):
+    with torch.no_grad():
+        exported_program = export(model, (torch.randn(1, 1, 28, 28, dtype=torch.float32),))
+        mod = from_exported_program(exported_program, keep_params_as_input=True)
+    
+    mod, params = relax.frontend.detach_params(mod)
+    ex = relax.build(mod, target)
+    vm = relax.VirtualMachine(ex, device)
+    params = [tvm.nd.array(p, device) for p in params["main"]]
+
+    return mod, params, vm
+
+def my_rowhammer(params):
+    # TODO
+    
+
 
 # Run via python3 main.py
 if __name__ == "__main__":
-    # Export model to TVM IRModule, intermediate representation in TVM. 
-    mod, param_spec = MLPModel().export_tvm(spec={"forward": {"x": nn.spec.Tensor((1, 784), "float32")}})
-    mod.show()
-    # We have two kinds of optimizations: Model optimizations (e.g. operator fusion, layout rewrites),
-    # and tensor program optimizations (mapping the operators to low-level implementations)
-
-    # Here we don't actually optimize
-    mod = relax.get_pipeline("zero")(mod)
-
-    
-    target = tvm.target.Target("llvm")
-    ex = relax.build(mod, target)
-    device = tvm.cpu()
-    vm = relax.VirtualMachine(ex, device)
-    data = np.random.rand(1, 784).astype("float32")
-    tvm_data = tvm.nd.array(data, device=device)
-    params = [np.random.rand(*param.shape).astype("float32") for _, param in param_spec]
-    params = [tvm.nd.array(param, device=device) for param in params]
-    print(vm["forward"](tvm_data, *params).numpy())
+    main()
