@@ -45,8 +45,12 @@ def main():
             interactor.test(model, params, vm)
         elif choice == 'r':
             print("Launching Rowhammer attack...")
-            for i in range(0, 10):
-                my_rowhammer(params)
+            accuracy = interactor.test(model, params, vm)
+            while accuracy > 0.00:
+                print(f"Accuracy: {accuracy:.4f}")
+                for i in range(10):
+                    my_rowhammer(params)
+                accuracy = interactor.test(model, params, vm)
         elif choice == 'q':
             break
 

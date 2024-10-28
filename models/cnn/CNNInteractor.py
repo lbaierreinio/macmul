@@ -55,5 +55,8 @@ class CNNInteractor:
                 max_index = np.argmax(gpu_out)
                 if (max_index == label):
                     correct += 1
-        print(f"Accuracy: {correct/total:.4f}")
+            break
+        accuracy = correct/total
+        print(f"Accuracy: {accuracy:.4f}")
+        return accuracy
 
