@@ -20,7 +20,7 @@ class CNN(nn.Module):
     def forward(self, x):
         x = self.pool(self.relu(self.conv1(x)))
         x = self.pool(self.relu(self.conv2(x)))
-        x = x.view(-1, 64 * 7 * 7)
+        x = x.view(-1, 64 * 7 * 7) # Transform for FCNN
         x = self.dropout(self.relu(self.fc1(x)))
         x = self.fc2(x)
         return x

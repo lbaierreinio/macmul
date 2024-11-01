@@ -43,7 +43,7 @@ class CNNInteractor:
     '''
     Test the model.
     '''
-    def test(self, model, params, vm):
+    def test(self, model, vm, params=None):
         correct = 0
         total = 0
         for images, labels in self.test_loader: # TODO: Determine how to test accuracy in batch.
@@ -51,7 +51,7 @@ class CNNInteractor:
                 total += 1
                 img, label = v
                 nd_array = tvm.nd.array(img.unsqueeze(0)) 
-                gpu_out = vm["main"](nd_array, *params)[0].numpy() 
+                gpu_out = vm["main"](nd_array, *params)[0].numpy() if params else vm["main"](nd_array)[0].numpy()
                 max_index = np.argmax(gpu_out)
                 if (max_index == label):
                     correct += 1
