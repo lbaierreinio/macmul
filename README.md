@@ -3,12 +3,6 @@
 
 ssh lucbr@comps2.cs.toronto.edu
 
-source /w/340/lucbr/miniconda3/bin/activate
-
-export TVM_HOME=/w/340/lucbr/tvm
-
-export PYTHONPATH=$TVM_HOME/python:$PYTHONPATH
-
-conda activate tvm-build-venv
+source init.sh
 
 python3 ./main.py
