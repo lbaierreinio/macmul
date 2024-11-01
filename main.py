@@ -2,8 +2,9 @@ from models.cnn.CNN import CNN
 import os
 from models.cnn.CNNInteractor import CNNInteractor
 import tvm
-from tvm import relax
+from tvm import IRModule, relax
 from tvm.relax.frontend import nn
+from hash_transformations import ReluToGelu
 import numpy as np
 import torch
 import torch.nn as nn
@@ -36,36 +37,59 @@ def main():
     # Target LLVM, CPU
     target = tvm.target.Target("llvm")
     device = tvm.cpu()
-    mod, params, vm = my_export(model, target, device)
+    mod, vm, params = my_export_without_params(model, target, device) # TODO: Change as needed
+    # mod = relax.get_pipeline("zero")(mod) # Could perform our own optimization to add code that checks the hash
+    mod = ReluToGelu()(mod)
+    mod.show()
 
     while True:
         # Accept input from user
         choice = input("Enter 't' to test the model, 'r' to launch a Rowhammer attack, 'q' to quit: ")
         if choice == 't':
-            interactor.test(model, params, vm)
+            accuracy = interactor.test(model, vm, params)
+            print(f"Accuracy: {accuracy:.4f}")
         elif choice == 'r':
             print("Launching Rowhammer attack...")
-            accuracy = interactor.test(model, params, vm)
+            accuracy = interactor.test(model, vm, params)
             while accuracy > 0.00:
                 print(f"Accuracy: {accuracy:.4f}")
                 for i in range(10):
                     my_rowhammer(params)
-                accuracy = interactor.test(model, params, vm)
+                accuracy = interactor.test(model, vm, params)
         elif choice == 'q':
             break
-
-def my_export(model, target, device):
+'''
+Export the model with parameters.
+'''
+def my_export_with_params(model, target, device):
     with torch.no_grad():
         exported_program = export(model, (torch.randn(1, 1, 28, 28, dtype=torch.float32),))
         mod = from_exported_program(exported_program, keep_params_as_input=True)
     
-    mod, params = relax.frontend.detach_params(mod)
+    mod, params = relax.frontend.detach_params(mod) # Here is where we should hook in to compute hash on the parameters probably
     ex = relax.build(mod, target)
     vm = relax.VirtualMachine(ex, device)
     params = [tvm.nd.array(p, device) for p in params["main"]]
 
-    return mod, params, vm
+    return mod, vm, params
 
+'''
+Export the model without parameters.
+'''
+def my_export_without_params(model, target, device):
+    with torch.no_grad():
+        exported_program = export(model, (torch.randn(1, 1, 28, 28, dtype=torch.float32),))
+        mod = from_exported_program(exported_program, keep_params_as_input=False)
+    
+    mod, _ = relax.frontend.detach_params(mod)
+    ex = relax.build(mod, target)
+    vm = relax.VirtualMachine(ex, device)
+
+    return mod, vm, None
+
+'''
+Launch a Rowhammer attack.
+'''
 def my_rowhammer(params):
     # Get random value from params
     random_index = np.random.choice(len(params))
@@ -81,10 +105,10 @@ def my_rowhammer(params):
     # Check type of random_param
     params[random_index].copyfrom(numpy_random_param)
 
-
+'''
+Flip a random bit in float_num.
+'''
 def flip_random_bit_in_float(float_num):
-    """Flip a random bit in a np.float32 number."""
-    
     if not isinstance(float_num, np.float32):
         raise ValueError("Input must be a np.float32 number.")
     
