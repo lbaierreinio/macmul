@@ -1,22 +1,21 @@
 from models.cnn.CNN import CNN
 import os
-from models.cnn.CNNInteractor import CNNInteractor
 import tvm
-from tvm import IRModule, relax
-from tvm.relax.frontend import nn
-from hash_transformations import ReluToGelu
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.transforms as transforms
+from tvm import IRModule, relax
+from tvm.relax.frontend import nn
+from hash_transformations import ReluToGelu
+from models.cnn.CNNInteractor import CNNInteractor
 from torchvision.datasets import MNIST
 from torch.utils.data import DataLoader
 from tvm.relax.frontend.torch import from_exported_program
 from torch.export import export
+from crypto.mac import MAC
 import random
-from Crypto.Hash import HMAC, SHA256
-
 
 def main():
     # File Path to be used
@@ -24,6 +23,8 @@ def main():
 
     # Load the Interactor
     interactor = CNNInteractor()
+
+    mac = MAC()
 
     # Load or train the model, depending on whether it is saved
     model = CNN()
@@ -40,8 +41,8 @@ def main():
     device = tvm.cpu()
     mod, vm, params = my_export_with_params(model, target, device) # TODO: Change as needed
     # mod = relax.get_pipeline("zero")(mod) # Could perform our own optimization to add code that checks the hash
-    mod = ReluToGelu()(mod)
-    mod.show()
+    mac.store_tag(params)
+        
 
     while True:
         # Accept input from user
@@ -56,9 +57,16 @@ def main():
                 print(f"Accuracy: {accuracy:.4f}")
                 for _ in range(10):
                     my_rowhammer(params)
+                break
                 accuracy = interactor.test(model, vm, params)
         elif choice == 'q':
             break
+        print("Checking hashes...")
+        if mac.verify(params):
+            print("Hashes match.")
+        else:
+            print("Hashes do not match... Reloading model.")
+            break # TODO
 '''
 Export the model with parameters.
 '''
