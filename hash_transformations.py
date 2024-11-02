@@ -9,11 +9,10 @@ class ReluRewriter(PyExprMutator):
         super().__init__(mod)
 
     def visit_call_(self, call: relax.Call) -> relax.Expr:
-        # visit the relax.Call expr, and only handle the case when op is relax.nn.relu
-        print(call)
-        print('---')
+        # TODO: Switch on conv, dense layer
         if call.op.name == "relax.nn.relu":
-            return relax.op.nn.gelu(call.args[0]) # Compute hash
+            # TODO: Replace with operator that verifies the hash.
+            return call
             
 
 
@@ -27,7 +26,6 @@ class ReluToGelu:
         """IRModule-level transformation"""
         rewriter = ReluRewriter(mod)
         for g_var, func in mod.functions_items():
-            print([g_var, func])
             if isinstance(func, relax.Function):
                 func = rewriter.visit_expr(func)
                 rewriter.builder_.update_func(g_var, func)

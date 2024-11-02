@@ -41,7 +41,7 @@ class CNNInteractor:
             print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(self.train_loader):.4f}")
     
     '''
-    Test the model.
+    Test the model (should be lowered by this point).
     '''
     def test(self, model, vm, params=None):
         correct = 0
