@@ -15,6 +15,7 @@ from torch.utils.data import DataLoader
 from tvm.relax.frontend.torch import from_exported_program
 from torch.export import export
 import random
+from Crypto.Hash import HMAC, SHA256
 
 
 def main():
@@ -37,7 +38,7 @@ def main():
     # Target LLVM, CPU
     target = tvm.target.Target("llvm")
     device = tvm.cpu()
-    mod, vm, params = my_export_without_params(model, target, device) # TODO: Change as needed
+    mod, vm, params = my_export_with_params(model, target, device) # TODO: Change as needed
     # mod = relax.get_pipeline("zero")(mod) # Could perform our own optimization to add code that checks the hash
     mod = ReluToGelu()(mod)
     mod.show()
@@ -51,9 +52,9 @@ def main():
         elif choice == 'r':
             print("Launching Rowhammer attack...")
             accuracy = interactor.test(model, vm, params)
-            while accuracy > 0.00:
+            while accuracy > 0.10:
                 print(f"Accuracy: {accuracy:.4f}")
-                for i in range(10):
+                for _ in range(10):
                     my_rowhammer(params)
                 accuracy = interactor.test(model, vm, params)
         elif choice == 'q':
@@ -80,8 +81,7 @@ def my_export_without_params(model, target, device):
     with torch.no_grad():
         exported_program = export(model, (torch.randn(1, 1, 28, 28, dtype=torch.float32),))
         mod = from_exported_program(exported_program, keep_params_as_input=False)
-    
-    mod, _ = relax.frontend.detach_params(mod)
+
     ex = relax.build(mod, target)
     vm = relax.VirtualMachine(ex, device)
 
