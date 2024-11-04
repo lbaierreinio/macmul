@@ -40,8 +40,9 @@ def main():
     target = tvm.target.Target("llvm")
     device = tvm.cpu()
     mod, vm, params = my_export_with_params(model, target, device) # TODO: Change as needed
-    # mod = relax.get_pipeline("zero")(mod) # Could perform our own optimization to add code that checks the hash
     mac.store_tag(params)
+
+    mod.show()
         
 
     while True:
@@ -75,6 +76,7 @@ def my_export_with_params(model, target, device):
         exported_program = export(model, (torch.randn(1, 1, 28, 28, dtype=torch.float32),))
         mod = from_exported_program(exported_program, keep_params_as_input=True)
     
+    mod = relax.get_pipeline("zero")(mod) # Could perform our own optimization to add code that checks the hash
     mod, params = relax.frontend.detach_params(mod) # Here is where we should hook in to compute hash on the parameters probably
     ex = relax.build(mod, target)
     vm = relax.VirtualMachine(ex, device)
@@ -90,6 +92,7 @@ def my_export_without_params(model, target, device):
         exported_program = export(model, (torch.randn(1, 1, 28, 28, dtype=torch.float32),))
         mod = from_exported_program(exported_program, keep_params_as_input=False)
 
+    mod = relax.get_pipeline("zero")(mod) # Could perform our own optimization to add code that checks the hash
     ex = relax.build(mod, target)
     vm = relax.VirtualMachine(ex, device)
 
