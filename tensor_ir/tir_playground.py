@@ -8,6 +8,7 @@ import torch
 import torchvision
 import matplotlib.pyplot as plt
 from crypto.mac import MAC
+import math
 
 mac = MAC()
 
@@ -15,32 +16,7 @@ def hash(x):
     digest = mac.hash(x)
     return np.frombuffer(digest, dtype=np.uint32)
 
-test_data = torchvision.datasets.FashionMNIST(
-    root="data",
-    train=False,
-    download=True,
-    transform=torchvision.transforms.ToTensor()
-)
-test_loader = torch.utils.data.DataLoader(test_data, batch_size=1, shuffle=True)
-class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
-               'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
-
-img, label = next(iter(test_loader))
-img = img.reshape(1, 28, 28).numpy()
-
-plt.figure()
-plt.imshow(img[0])
-plt.colorbar()
-plt.grid(False)
-plt.show()
-print("Class:", class_names[label[0]])
-
-
-w0 = tvm.nd.array(np.random.randn(128, 784).astype(np.float32))
-b0 = tvm.nd.array(np.random.randn(128).astype(np.float32))
-w1 = tvm.nd.array(np.random.randn(10, 128).astype(np.float32))
-b1 = tvm.nd.array(np.random.randn(10).astype(np.float32)) 
-
+# Register modified linear for hashes.
 @tvm.register_func("env.linear", override=True)
 def torch_linear(x: tvm.nd.NDArray,
                  w: tvm.nd.NDArray,
@@ -55,37 +31,18 @@ def torch_linear(x: tvm.nd.NDArray,
 
     w_ground_truth_hash = np.from_dlpack(w_hash)
     b_ground_truth_hash = np.from_dlpack(b_hash)
-    print(w_torch.sum())
-    w_run_time_hash = hash(w_torch.sum().item())
-    b_run_time_hash = hash(b_torch.sum().item())
-    print("w_ground_truth_hash:", w_ground_truth_hash)
-    print("w_run_time_hash:", w_run_time_hash)
-    print("b_ground_truth_hash:", b_ground_truth_hash)
-    print("b_run_time_hash:", b_run_time_hash)
+    w_run_time_hash = hash(math.floor(np.from_dlpack(w).sum()))
+    b_run_time_hash = hash(math.floor(np.from_dlpack(b).sum()))
     # Assertions
     assert np.all(w_ground_truth_hash == w_run_time_hash)
     assert np.all(b_ground_truth_hash == b_run_time_hash)
-
     # Compute matmul
     torch.mm(x_torch, w_torch.T, out=out_torch)
     torch.add(out_torch, b_torch, out=out_torch)
 
-
-
-
-w0_p = np.random.randn(128, 784).astype(np.float32)
-b0_p = np.random.randn(128).astype(np.float32)
-w1_p = np.random.randn(10, 128).astype(np.float32)
-b1_p = np.random.randn(10).astype(np.float32)
-
-# Store SHA-256 as 64-bit integer
-
-w0 = tvm.nd.array(w0_p)
-b0 = tvm.nd.array(b0_p)
-w1 = tvm.nd.array(w1_p)
-b1 = tvm.nd.array(b1_p)
 data_nd = tvm.nd.array(img.reshape(1, 784))
 
+# Register relu
 @tvm.register_func("env.relu", override=True)
 def lnumpy_relu(x: tvm.nd.NDArray,
                 out: tvm.nd.NDArray):
@@ -116,20 +73,50 @@ class MyModuleWithExternCall:
             R.output(out)
         return out
 
+
+# Build and run
 mod = MyModuleWithExternCall
 mod.show()
 ex = relax.build(mod, target="llvm")
 vm = relax.VirtualMachine(ex, tvm.cpu())
-print(w0_p.sum())
+
+# Load Image
+test_data = torchvision.datasets.FashionMNIST(
+    root="data",
+    train=False,
+    download=True,
+    transform=torchvision.transforms.ToTensor()
+)
+test_loader = torch.utils.data.DataLoader(test_data, batch_size=1, shuffle=True)
+class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
+               'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+
+img, label = next(iter(test_loader))
+img = img.reshape(1, 28, 28).numpy()
+
+plt.figure()
+plt.imshow(img[0])
+plt.colorbar()
+plt.grid(False)
+plt.show()
+print("Class:", class_names[label[0]])
+
+# Load weights
+w0_p = np.random.randn(128, 784).astype(np.float32)
+b0_p = np.random.randn(128).astype(np.float32)
+w1_p = np.random.randn(10, 128).astype(np.float32)
+b1_p = np.random.randn(10).astype(np.float32)
+
+# Compute hashes.
 nd_res = vm["main"](data_nd,
-                    w0,
-                    b0,
-                    w1,
-                    b1,
-                    tvm.nd.array(hash(w0_p.sum())),
-                    tvm.nd.array(hash(b0_p.sum())),
-                    tvm.nd.array(hash(w1_p.sum())),
-                    tvm.nd.array(hash(b1_p.sum())),
+                    tvm.nd.array(w0_p),
+                    tvm.nd.array(b0_p),
+                    tvm.nd.array(w1_p),
+                    tvm.nd.array(b1_p),
+                    tvm.nd.array(hash(math.floor(w0_p.sum()))),
+                    tvm.nd.array(hash(math.floor(b0_p.sum()))),
+                    tvm.nd.array(hash(math.floor(w1_p.sum()))),
+                    tvm.nd.array(hash(math.floor(b1_p.sum()))),
 )
 pred_kind = np.argmax(nd_res.numpy(), axis=1)
 print("MyModuleWithExternCall Prediction:", class_names[pred_kind[0]])
