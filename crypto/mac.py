@@ -8,6 +8,11 @@ class MAC:
         self.hmac = HMAC.new(self.hmac_key, digestmod=SHA256)
         self.tag = None
 
+    def hash(self, x):
+        hmac_r = HMAC.new(self.hmac_key, digestmod=SHA256)
+        encoded_x = str(x).encode()
+        return hmac_r.update(encoded_x).digest()
+
     def store_tag(self, params):
         str_params = str(params).encode()
         self.tag = self.hmac.update(str_params).digest()

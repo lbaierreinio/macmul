@@ -40,7 +40,7 @@ def main():
     target = tvm.target.Target("llvm")
     device = tvm.cpu()
     mod, vm, params = my_export_with_params(model, target, device) # TODO: Change as needed
-    mac.store_tag(params)
+    #mac.store_tag(params)
 
     mod.show()
         
@@ -94,9 +94,9 @@ def my_export_without_params(model, target, device):
 
     mod = relax.get_pipeline("zero")(mod) # Could perform our own optimization to add code that checks the hash
     ex = relax.build(mod, target)
-    vm = relax.VirtualMachine(ex, device)
+    # vm = relax.VirtualMachine(ex, device) # Remove VM & test.
 
-    return mod, vm, None
+    # return mod, vm, None
 
 '''
 Launch a Rowhammer attack.
