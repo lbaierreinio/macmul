@@ -1,32 +1,21 @@
-import os
 import tvm
-import random
 import torch
 import numpy as np
 import torch.nn as nn
 import torch.optim as optim
-from torch.export import export
 from tvm import IRModule, relax
 import torchvision.transforms as transforms
 from torchvision.datasets import MNIST
 from torch.utils.data import DataLoader
-from tvm.relax.frontend import nn
-from tvm.relax.frontend.torch import from_exported_program
-from hash_transformations import ReluToGelu
-from models.mlp.MLP import MLP
-from crypto.mac import MAC
 from tvm.relax.expr_functor import PyExprMutator, mutator
 from tvm.script import relax as R
-from mnist import M
+
 
 @tvm.register_func("env.hash", override=True)
 def hash(w,output):
+    # TODO: Add hash function for w
     return output
 
-'''
-This is an example of a high-level transformation on our module.
-Specifically, we repalce matmul + add with one fused operator.
-'''
 @relax.expr_functor.mutator
 class MatmulAddFusor(relax.PyExprMutator):
     def __init__(self, mod: IRModule) -> None:
@@ -106,48 +95,52 @@ class FuseDenseAddPass:
     """The wrapper for the LowerTensorIR pass."""
     def transform_module(self, mod, ctx):
         return MatmulAddFusor(mod).transform()
-
-def main():
-    # Instantiate model
-    model = MLP()
-
-    mnist = M()
-
-    mnist.train(model, 5)
-
-    model.eval()
-
-    # Export model
-    with torch.no_grad():
-        exported_program = export(model, (torch.randn(1, 784, dtype=torch.float32),))
-        mod = from_exported_program(exported_program, keep_params_as_input=True)
-    
-    # Show model before & after pass
-    mod.show()
-    mod = FuseDenseAddPass()(mod)
-    mod.show()
-
-    mod, params = relax.frontend.detach_params(mod)
-    params = [tvm.nd.array(p, tvm.cpu()) for p in params["main"]]
-
-    # Build model for LLVM & CPU
-    ex = relax.build(mod, "llvm")
-    vm = relax.VirtualMachine(ex, tvm.cpu())
-
-    # Declare weights & biases
-    w0_n = np.random.randn(128, 784).astype(np.float32)
-    b0_n = np.random.randn(128).astype(np.float32)
-    w1_n = np.random.randn(128, 128).astype(np.float32)
-    b1_n = np.random.randn(128).astype(np.float32)
-    w2_n = np.random.randn(10, 128).astype(np.float32)
-    b2_n = np.random.randn(10).astype(np.float32)
-
-    # Test model
-    accuracy = mnist.test(model, vm, params)
-    print(accuracy)
     
 
+class MLPInteractor:
+    def __init__(self):
+        pass
+    
+    def transform(self, mod):
+        mod = FuseDenseAddPass()(mod)
+        return mod
+    
+    def test(self, model, vm, params):
+        # TODO: Fix using test_loader in this way
+        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
+        test_dataset = MNIST(root='./data', train=False, download=True, transform=transform)
+        test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=False)
+        correct = 0
+        total = 0
+        for images, labels in test_loader:
+            for v in zip(images, labels): 
+                total += 1
+                img, label = v
+                nd_array = tvm.nd.array(img.view(1,784)) 
+                out = vm["main"](nd_array, *params)[0].numpy()
+                max_index = np.argmax(out)
+                if (max_index == label):
+                    correct += 1
+            break
+        return correct/total
 
+    def train(self, model, epochs=5):
+        # Load the MNIST dataset
+        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
+        train_dataset = MNIST(root='./data', train=True, download=True, transform=transform)
+        train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+        criterion = nn.CrossEntropyLoss()
 
-if __name__ == '__main__':
-    main()
+        # Train the model
+        optimizer = optim.Adam(model.parameters(), lr=0.001)
+        model.train()
+        for epoch in range(epochs):
+            running_loss = 0.0
+            for images, labels in train_loader:
+                optimizer.zero_grad()
+                outputs = model(images.view(images.shape[0], -1))
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+                running_loss += loss.item()
+            print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.4f}")
