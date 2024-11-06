@@ -18,6 +18,7 @@ def hash(x):
 
 # Register modified linear for hashes.
 @tvm.register_func("env.linear", override=True)
+# NOTE THAT WE DON'T ACTUALLY NEED TO USE TORCH FOR THIS. WE CAN JUST USE TVM TO DO THE MATMUL AND ADDITION.
 def torch_linear(x: tvm.nd.NDArray,
                  w: tvm.nd.NDArray,
                  b: tvm.nd.NDArray,
@@ -40,10 +41,8 @@ def torch_linear(x: tvm.nd.NDArray,
     torch.mm(x_torch, w_torch.T, out=out_torch)
     torch.add(out_torch, b_torch, out=out_torch)
 
-data_nd = tvm.nd.array(img.reshape(1, 784))
-
 # Register relu
-@tvm.register_func("env.relu", override=True)
+@tvm.register_func("env.relu", override=True) # TODO: Replace with regular ReLU
 def lnumpy_relu(x: tvm.nd.NDArray,
                 out: tvm.nd.NDArray):
     x_torch = torch.from_dlpack(x)
@@ -66,10 +65,9 @@ class MyModuleWithExternCall:
         # block 0
         m, n, k = T.int64(), T.int64(), T.int64()
         with R.dataflow():
-            lv0 = R.call_dps_packed("env.linear", (x, w0, b0, w0_hash, b0_hash), R.Tensor((1, n), "float32"))
-            lv1 = R.call_dps_packed("env.relu", (lv0, ), R.Tensor((1, n), "float32"))
-            lv2 =  R.call_dps_packed("env.relu", (lv1, ), R.Tensor((1, n), "float32"))
-            out = R.call_dps_packed("env.linear", (lv1, w1, b1, w1_hash, b1_hash), R.Tensor((1, k), "float32"))
+            lv0 = R.call_dps_packed("env.linear", (x, w0, b0, w0_hash, b0_hash), R.Tensor((1, n), "float32")) # Linear
+            lv1 = R.call_dps_packed("env.relu", (lv0, ), R.Tensor((1, n), "float32")) # ReLU
+            out = R.call_dps_packed("env.linear", (lv1, w1, b1, w1_hash, b1_hash), R.Tensor((1, k), "float32")) # Linear
             R.output(out)
         return out
 
@@ -93,6 +91,7 @@ class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
 
 img, label = next(iter(test_loader))
 img = img.reshape(1, 28, 28).numpy()
+data_nd = tvm.nd.array(img.reshape(1, 784))
 
 plt.figure()
 plt.imshow(img[0])
