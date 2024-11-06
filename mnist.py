@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 '''
 Interact with the MNist CNN.
 '''
-class CNNInteractor:
+class M:
     def __init__(self):
         self.transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
         self.train_dataset = MNIST(root='./data', train=True, download=True, transform=self.transform)
@@ -32,6 +32,7 @@ class CNNInteractor:
         for epoch in range(epochs):
             running_loss = 0.0
             for images, labels in self.train_loader:
+                images = images.view(images.shape[0], -1) # Flatten
                 optimizer.zero_grad()
                 outputs = model(images)
                 loss = self.criterion(outputs, labels)
@@ -41,7 +42,7 @@ class CNNInteractor:
             print(f"Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(self.train_loader):.4f}")
     
     '''
-    Test the model.
+    Test the model (should be lowered by this point).
     '''
     def test(self, model, vm, params=None):
         correct = 0
@@ -50,8 +51,7 @@ class CNNInteractor:
             for v in zip(images, labels): 
                 total += 1
                 img, label = v
-                nd_array = tvm.nd.array(img.unsqueeze(0)) 
-                print(img.unsqueeze(0).shape)
+                nd_array = tvm.nd.array(img.view(1,784)) 
                 gpu_out = vm["main"](nd_array, *params)[0].numpy() if params else vm["main"](nd_array)[0].numpy()
                 max_index = np.argmax(gpu_out)
                 if (max_index == label):
