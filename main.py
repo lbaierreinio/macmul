@@ -1,12 +1,16 @@
+import os
 import tvm
 import argparse
 import utils.model as mu
 import utils.crypto as cu
 import utils.rowhammer as ru
+from dotenv import load_dotenv
 
 ROWHAMMER_ACCURACY_THRESHOLD = 0.25
 
 def main():
+    load_dotenv()
+    secret_key = str(os.getenv("SECRET_KEY")).encode('ascii')
     # Receive input from user
     options = mu.OPTIONS
     parser = argparse.ArgumentParser()
@@ -26,14 +30,16 @@ def main():
     # Import & lower the model
     model = mu.mu_import(model, interactor, file_path)
     model.eval()
-    mod = mu.mu_export(model, ex_t)
+    mod, params = mu.mu_export(model, ex_t)
+
+    print(params)
 
     # Perform model-specific transformations
-    mod = interactor.transform(mod)
+    mod = interactor.transform(mod) # TODO: Pass hash here
     
     mod.show()
 
-    mod, vm, params = mu.mu_build(mod, target, device)
+    mod, vm = mu.mu_build(mod, target, device) # TODO: Pass hash here
 
     # User interface
     while True:
