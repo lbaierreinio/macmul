@@ -12,10 +12,11 @@ from tvm.script import relax as R
 
 
 @tvm.register_func("env.mac_mul", override=True)
-def mac_mul(w,output):
-    # TODO: Add hash function for w
-    print(w)
-    return output
+def mac_mul(x: tvm.nd.NDArray, w: tvm.nd.NDArray, out: tvm.nd.NDArray):
+    x_torch = torch.from_dlpack(x)
+    w_torch = torch.from_dlpack(w)
+    out_torch = torch.from_dlpack(out)
+    torch.mm(x_torch, w_torch, out=out_torch)
 
 @relax.expr_functor.mutator
 class MACMul(relax.PyExprMutator):
@@ -64,13 +65,11 @@ class MACMul(relax.PyExprMutator):
         param_w = relax.Var("w" ,relax.TensorStructInfo(w.struct_info.shape, w.struct_info.dtype))
 
         bb = relax.BlockBuilder()
-
         fn_name = "mac_mul%d" % (self.counter)
         self.counter += 1
         with bb.function(fn_name, [param_x, param_w]):
             with bb.dataflow():
-                bb.emit(relax.op.call_dps_packed("env.mac_mul", (param_w), relax.TensorStructInfo(w.struct_info.shape, w.struct_info.dtype)))
-                gv = bb.emit(relax.op.matmul(param_x, param_w))
+                gv = bb.emit(relax.op.call_dps_packed("env.mac_mul", (param_x, param_w), relax.TensorStructInfo((1, w.struct_info.shape[1]), w.struct_info.dtype)))
             bb.emit_func_output(gv)
 
         # Add Primitive attribute to the fused funtions
