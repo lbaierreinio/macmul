@@ -8,7 +8,7 @@ cd into final project directory
 
 source init.sh
 
-python3 ./main.py
+python3 ./main.py [model]
 
 ## Codebase Structure
 ### models
