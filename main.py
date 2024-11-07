@@ -40,6 +40,10 @@ def main():
 
     mod, vm, params = mu.mu_build(mod, target, device)
 
+    hashes = [tvm.nd.array(cu.cu_hash(param.asnumpy(), secret_key)) for param in params]
+
+    params = [tvm.nd.array(param) for param in params]
+
     # User interface
     while True:
         choice = input("Enter 't' to test the model, 'rh' to launch a Rowhammer attack, 'q' to quit: ")

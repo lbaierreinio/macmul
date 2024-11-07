@@ -15,7 +15,6 @@ from tvm.script import relax as R
 def mac_mul(x: tvm.nd.NDArray, w: tvm.nd.NDArray, out: tvm.nd.NDArray):
     x_torch = torch.from_dlpack(x)
     w_torch = torch.from_dlpack(w)
-    print(w_torch)
     out_torch = torch.from_dlpack(out)
     torch.mm(x_torch, w_torch, out=out_torch)
 

@@ -38,23 +38,7 @@ def mu_build(mod, tgt, dev):
     mod, params = relax.frontend.detach_params(mod)
     ex = relax.build(mod, tgt)
     vm = relax.VirtualMachine(ex, dev)
-    params = mu_hash(params, dev)
-    return mod, vm, params
-
-def mu_hash(params, key):
-    # Instantiate HMAC object
-    hmac = HMAC.new(key, digestmod=SHA256)
-    # Return 64-bit slice of hash at specified index
-    def get_hash_at_index(p, i):
-        digest = hmac.update(str(p).encode()).digest()
-        return np.frombuffer(digest, dtype=np.uint64)[i]
-    # Stack the 64-bit slices
-    to_stack = []
-    vectorized_func = np.vectorize(get_hash_at_index)
-    for i in range(0, 4):
-        to_stack.append(vectorized_func(param, i))
-        
-    return np.stack(to_stack)
+    return mod, vm, params["main"]
 
 
 
