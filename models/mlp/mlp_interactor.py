@@ -11,18 +11,18 @@ from tvm.relax.expr_functor import PyExprMutator, mutator
 from tvm.script import relax as R
 
 
-@tvm.register_func("env.hash", override=True)
-def hash(w,output):
+@tvm.register_func("env.mac_mul", override=True)
+def mac_mul(w,output):
     # TODO: Add hash function for w
+    print(w)
     return output
 
 @relax.expr_functor.mutator
-class MatmulAddFusor(relax.PyExprMutator):
+class MACMul(relax.PyExprMutator):
     def __init__(self, mod: IRModule) -> None:
         super().__init__()
         self.mod_ = mod
-        # cache pre-defined ops
-        self.add_op = tvm.ir.Op.get("relax.add")
+        # Search for matmul operation
         self.matmul_op = tvm.ir.Op.get("relax.matmul")
         self.counter = 0
 
@@ -53,34 +53,24 @@ class MatmulAddFusor(relax.PyExprMutator):
             return node.op == op
 
         # pattern match matmul => add
-        if not match_call(call, self.add_op):
+        if not match_call(call, self.matmul_op):
             return call
 
-        value = self.lookup_binding(call.args[0])
-        if value is None:
-            return call
-
-        if not match_call(value, self.matmul_op):
-            return call
-
-        x = value.args[0]
-        w = value.args[1]
-        b = call.args[1]
+        x = call.args[0]
+        w = call.args[1]
 
         # construct a new fused primitive function
         param_x = relax.Var("x" ,relax.TensorStructInfo(x.struct_info.shape, x.struct_info.dtype))
         param_w = relax.Var("w" ,relax.TensorStructInfo(w.struct_info.shape, w.struct_info.dtype))
-        param_b = relax.Var("b" ,relax.TensorStructInfo(b.struct_info.shape, b.struct_info.dtype))
 
         bb = relax.BlockBuilder()
 
-        fn_name = "fused_matmul_add%d" % (self.counter)
+        fn_name = "mac_mul%d" % (self.counter)
         self.counter += 1
-        with bb.function(fn_name, [param_x, param_w, param_b]):
+        with bb.function(fn_name, [param_x, param_w]):
             with bb.dataflow():
-                lv0 = bb.emit(relax.op.matmul(param_x, param_w))
-                gv = bb.emit_output(relax.op.add(lv0, param_b))
-                bb.emit(relax.op.call_dps_packed("env.hash", (param_w), relax.TensorStructInfo(w.struct_info.shape, w.struct_info.dtype)))
+                bb.emit(relax.op.call_dps_packed("env.mac_mul", (param_w), relax.TensorStructInfo(w.struct_info.shape, w.struct_info.dtype)))
+                gv = bb.emit(relax.op.matmul(param_x, param_w))
             bb.emit_func_output(gv)
 
         # Add Primitive attribute to the fused funtions
@@ -88,13 +78,13 @@ class MatmulAddFusor(relax.PyExprMutator):
         global_var = self.builder_.add_func(fused_fn, fn_name)
 
         # construct call into the fused function
-        return relax.Call(global_var, [x, w, b], None, None)
+        return relax.Call(global_var, [x, w], None, None)
 
-@tvm.ir.transform.module_pass(opt_level=2, name="MatmulAddFuse")
-class FuseDenseAddPass:
+@tvm.ir.transform.module_pass(opt_level=2, name="MACMul")
+class MACMulPass:
     """The wrapper for the LowerTensorIR pass."""
     def transform_module(self, mod, ctx):
-        return MatmulAddFusor(mod).transform()
+        return MACMul(mod).transform()
     
 
 class MLPInteractor:
@@ -102,7 +92,7 @@ class MLPInteractor:
         pass
     
     def transform(self, mod):
-        mod = FuseDenseAddPass()(mod)
+        mod = MACMulPass()(mod)
         return mod
     
     def test(self, model, vm, params):
