@@ -5,11 +5,9 @@ import numpy as np
 import torch.nn as nn
 from tvm import relax
 import torch.optim as optim
-from Crypto.Cipher import AES
 from models.cnn.cnn import CNN
 from models.mlp.mlp import MLP
 from torch.export import export
-from Crypto.Hash import HMAC, SHA256
 from models.cnn.cnn_interactor import CNNInteractor
 from models.mlp.mlp_interactor import MLPInteractor
 from tvm.relax.frontend.torch import from_exported_program
@@ -39,6 +37,3 @@ def mu_build(mod, tgt, dev):
     ex = relax.build(mod, tgt)
     vm = relax.VirtualMachine(ex, dev)
     return mod, vm, params["main"]
-
-
-
