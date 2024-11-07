@@ -32,16 +32,16 @@ def mu_export(model, ex_t):
     with torch.no_grad():
         exported_program = export(model, (ex_t,))
         mod = from_exported_program(exported_program, keep_params_as_input=True)
-    mod, params = relax.frontend.detach_params(mod)
-    return mod, params
+    return mod
 
 def mu_build(mod, tgt, dev):
-    mod = relax.frontend.detach_params(mod)
+    mod, params = relax.frontend.detach_params(mod)
     ex = relax.build(mod, tgt)
     vm = relax.VirtualMachine(ex, dev)
-    return mod, vm
+    params = mu_hash(params, dev)
+    return mod, vm, params
 
-def mu_hash_weights(params, key):
+def mu_hash(params, key):
     # Instantiate HMAC object
     hmac = HMAC.new(key, digestmod=SHA256)
     # Return 64-bit slice of hash at specified index

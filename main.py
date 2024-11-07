@@ -11,6 +11,7 @@ ROWHAMMER_ACCURACY_THRESHOLD = 0.25
 def main():
     load_dotenv()
     secret_key = str(os.getenv("SECRET_KEY")).encode('ascii')
+
     # Receive input from user
     options = mu.OPTIONS
     parser = argparse.ArgumentParser()
@@ -30,16 +31,14 @@ def main():
     # Import & lower the model
     model = mu.mu_import(model, interactor, file_path)
     model.eval()
-    mod, params = mu.mu_export(model, ex_t)
-
-    print(params)
+    mod = mu.mu_export(model, ex_t)
 
     # Perform model-specific transformations
-    mod = interactor.transform(mod) # TODO: Pass hash here
+    mod = interactor.transform(mod)
     
     mod.show()
 
-    mod, vm = mu.mu_build(mod, target, device) # TODO: Pass hash here
+    mod, vm, params = mu.mu_build(mod, target, device)
 
     # User interface
     while True:
