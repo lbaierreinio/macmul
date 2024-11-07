@@ -1,12 +1,17 @@
+import os
 import tvm
 import argparse
 import utils.model as mu
 import utils.crypto as cu
 import utils.rowhammer as ru
+from dotenv import load_dotenv
 
 ROWHAMMER_ACCURACY_THRESHOLD = 0.25
 
 def main():
+    load_dotenv()
+    secret_key = str(os.getenv("SECRET_KEY")).encode('ascii')
+
     # Receive input from user
     options = mu.OPTIONS
     parser = argparse.ArgumentParser()
@@ -34,6 +39,10 @@ def main():
     mod.show()
 
     mod, vm, params = mu.mu_build(mod, target, device)
+
+    hashes = [tvm.nd.array(cu.cu_hash(param.asnumpy(), secret_key)) for param in params]
+
+    params = [tvm.nd.array(param) for param in params]
 
     # User interface
     while True:

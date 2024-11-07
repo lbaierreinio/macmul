@@ -37,7 +37,7 @@ class MACMul(relax.PyExprMutator):
                 continue
             # Visit expression (calling visit_call_ for each node)
             updated_func = self.visit_expr(func)
-            # Remove the unused add & matmul operations
+            # Remove the unused matmul operations
             updated_func = relax.analysis.remove_all_unused(updated_func) 
             self.builder_.update_func(global_var, updated_func)
 
@@ -79,7 +79,7 @@ class MACMul(relax.PyExprMutator):
         # construct call into the fused function
         return relax.Call(global_var, [x, w], None, None)
 
-@tvm.ir.transform.module_pass(opt_level=2, name="MACMul")
+@tvm.ir.transform.module_pass(opt_level=1, name="MACMul")
 class MACMulPass:
     """The wrapper for the LowerTensorIR pass."""
     def transform_module(self, mod, ctx):

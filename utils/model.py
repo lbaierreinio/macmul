@@ -36,5 +36,4 @@ def mu_build(mod, tgt, dev):
     mod, params = relax.frontend.detach_params(mod)
     ex = relax.build(mod, tgt)
     vm = relax.VirtualMachine(ex, dev)
-    params = [tvm.nd.array(p, dev) for p in params["main"]]
-    return mod, vm, params
+    return mod, vm, params["main"]
