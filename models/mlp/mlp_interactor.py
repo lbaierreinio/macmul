@@ -26,7 +26,7 @@ class MACMul(relax.PyExprMutator):
         # Search for matmul operation
         self.matmul_op = tvm.ir.Op.get("relax.matmul")
         self.counter = 0
-        self.starting_param = 7 # TODO: Remove hard-coded value
+        self.starting_param = 1
         self.params = []
 
     # Transform our IRModule
@@ -39,6 +39,11 @@ class MACMul(relax.PyExprMutator):
                 continue
             # Set parameters for updating binding later
             self.params = func.params
+            # Set initial value for the counter
+            for i,p in enumerate(self.params):
+                if p.name_hint == 'h0':
+                    self.starting_param = i
+                    break
             updated_func = self.visit_expr(func)
             # Remove the unused matmul operations
             updated_func = relax.analysis.remove_all_unused(updated_func) 
