@@ -2,16 +2,12 @@ import os
 import tvm
 import argparse
 import utils.model as mu
+import utils.helpers as hp
 import utils.rowhammer as ru
-from dotenv import load_dotenv
 
 ROWHAMMER_ACCURACY_THRESHOLD = 0.25
 
 def main():
-    # Load environment variables
-    load_dotenv()
-    secret_key = str(os.getenv("SECRET_KEY")).encode('ascii')
-
     # Receive input from user
     options = mu.OPTIONS
     parser = argparse.ArgumentParser()
@@ -32,7 +28,7 @@ def main():
     model.eval() # Set to evaluation mode
     mod = mu.mu_export(model, ex_t) # Export model to IRModule
     mod, params = mu.mu_detach_params(mod) # Detach parameters
-    mod, hs = mu.mu_integrate_hashes(mod, params, secret_key) # Integrate hashes into main function
+    mod, hs = mu.mu_integrate_hashes(mod, params, hp.get_secret_key()) # Integrate hashes into main function
     mod = interactor.transform(mod) # Transform IRModule
     mod, vm = mu.mu_build(mod, target, device) # Build for our target & device
 

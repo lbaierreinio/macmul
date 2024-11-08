@@ -1,20 +1,25 @@
+import os
 import tvm
 import torch
 import numpy as np
 import torch.nn as nn
+import utils.model as mu
+import utils.helpers as hp
 import torch.optim as optim
+from dotenv import load_dotenv
 from tvm import IRModule, relax
-import torchvision.transforms as transforms
 from torchvision.datasets import MNIST
 from torch.utils.data import DataLoader
+import torchvision.transforms as transforms
 from tvm.relax.expr_functor import PyExprMutator, mutator
-from tvm.script import relax as R
-
 
 @tvm.register_func("env.mac_mul", override=True)
 def mac_mul(x: tvm.nd.NDArray, w: tvm.nd.NDArray, h: tvm.nd.NDArray, out: tvm.nd.NDArray):
     x_torch = torch.from_dlpack(x)
     w_torch = torch.from_dlpack(w)
+    h_np = np.from_dlpack(h)
+    w_hash = mu.mu_hash(w_torch, hp.get_secret_key())
+    assert np.array_equal(h_np, w_hash)
     out_torch = torch.from_dlpack(out)
     torch.mm(x_torch, w_torch, out=out_torch)
 
