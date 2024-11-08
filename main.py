@@ -34,28 +34,30 @@ def main():
 
     mod.show()
     while True:
-        choice = input("Enter 't' to test the model, 'rh' to launch a Rowhammer attack, 'q' to quit: ")
-        if choice == 'st':
-            interactor.test(model, vm, [*params, *hs], True)
-        elif choice == 'srh':
-            ru.ru_rowhammer(params)
-        elif choice == 't':
-            accuracy = interactor.test(model, vm, [*params, *hs])
-            print(f"Accuracy: {accuracy:.4f}")
-        # Rowhammer attack until threshold is met
-        elif choice == 'rh':
-            print("Launching Rowhammer attack...")
-            accuracy = 1
-            while accuracy > ROWHAMMER_ACCURACY_THRESHOLD:
-                for _ in range(10):
-                    ru.ru_rowhammer(params)
+        choice = input("Enter choice (st, srh, t, rh, q): ")
+        try: 
+            if choice == 'st': # Single Test
+                interactor.test(model, vm, [*params, *hs], True)
+            elif choice == 'srh': # Single Rowhammer
+                ru.ru_rowhammer(params)
+            elif choice == 't': # Bulk Test on Accuracy
                 accuracy = interactor.test(model, vm, [*params, *hs])
                 print(f"Accuracy: {accuracy:.4f}")
-        # Quit
-        elif choice == 'q':
-            break
-        else:
-            pass
+            elif choice == 'rh': # Rowhammer until certain threshold is met
+                print("Launching Rowhammer attack...")
+                accuracy = 1
+                while accuracy > ROWHAMMER_ACCURACY_THRESHOLD:
+                    for _ in range(10):
+                        ru.ru_rowhammer(params)
+                    accuracy = interactor.test(model, vm, [*params, *hs])
+                    print(f"Accuracy: {accuracy:.4f}")
+            elif choice == 'q': # Quit
+                break
+            else:
+                pass
+        except AssertionError:
+            print("Weights have been tampered with. Exiting...")
+            exit()
 
 if __name__ == "__main__":
     main()

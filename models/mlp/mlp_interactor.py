@@ -1,4 +1,4 @@
-import os
+
 import tvm
 import torch
 import numpy as np
@@ -6,7 +6,6 @@ import torch.nn as nn
 import utils.model as mu
 import utils.helpers as hp
 import torch.optim as optim
-from dotenv import load_dotenv
 from tvm import IRModule, relax
 from torchvision.datasets import MNIST
 from torch.utils.data import DataLoader
@@ -112,7 +111,7 @@ class MLPInteractor:
         # TODO: Fix using test_loader in this way
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
         test_dataset = MNIST(root='./data', train=False, download=True, transform=transform)
-        test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=False)
+        test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=True)
         correct = 0
         total = 0
         for images, labels in test_loader:
