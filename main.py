@@ -44,11 +44,10 @@ def main():
 
     hashes = []
     hash_vars = []
-
+    ctr = 0
     # Create hashes
     for i, param in enumerate(params):
         p = mod["main"].params[i+1]
-        ctr = 0
         if 'b' not in p.name_hint: # Ignore biases for now
             name = "h" + str(ctr)
             ctr += 1

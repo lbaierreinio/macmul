@@ -26,6 +26,7 @@ class MACMul(relax.PyExprMutator):
         # Search for matmul operation
         self.matmul_op = tvm.ir.Op.get("relax.matmul")
         self.counter = 0
+        self.starting_param = 7
         self.params = []
 
     # Transform our IRModule
@@ -36,7 +37,7 @@ class MACMul(relax.PyExprMutator):
             # Avoid already fused functions
             if func.attrs is not None and "Primitive" in func.attrs.keys() and func.attrs["Primitive"] != 0: # 
                 continue
-            # Visit expression (calling visit_call_ for each node)
+            # Set parameters for updating binding later
             self.params = func.params
             updated_func = self.visit_expr(func)
             # Remove the unused matmul operations
@@ -47,6 +48,7 @@ class MACMul(relax.PyExprMutator):
 
     # Visit each node in the expression
     def visit_call_(self, call):
+        # TODO: Get parent call
         call = self.visit_expr_post_order(call)
 
         # Check if function matches
@@ -65,13 +67,14 @@ class MACMul(relax.PyExprMutator):
         # construct a new fused primitive function
         param_x = relax.Var("x" ,relax.TensorStructInfo(x.struct_info.shape, x.struct_info.dtype))
         param_w = relax.Var("w" ,relax.TensorStructInfo(w.struct_info.shape, w.struct_info.dtype))
+        param_h = self.params[self.counter + self.starting_param]
 
         bb = relax.BlockBuilder()
         fn_name = "mac_mul%d" % (self.counter)
         self.counter += 1
-        with bb.function(fn_name, [param_x, param_w]):
+        with bb.function(fn_name, [param_x, param_w, param_h]):
             with bb.dataflow():
-                gv = bb.emit(relax.op.call_dps_packed("env.mac_mul", (param_x, param_w), relax.TensorStructInfo((1, w.struct_info.shape[1]), w.struct_info.dtype)))
+                gv = bb.emit(relax.op.call_dps_packed("env.mac_mul", (param_x, param_w, param_h), relax.TensorStructInfo((1, w.struct_info.shape[1]), w.struct_info.dtype)))
             bb.emit_func_output(gv)
 
         # Add Primitive attribute to the fused functions
@@ -79,7 +82,7 @@ class MACMul(relax.PyExprMutator):
         global_var = self.builder_.add_func(fused_fn, fn_name)
 
         # construct call into the fused function
-        return relax.Call(global_var, [x, w], None, None)
+        return relax.Call(global_var, [x, w, param_h], None, None)
 
 @tvm.ir.transform.module_pass(opt_level=1, name="MACMul")
 class MACMulPass:
