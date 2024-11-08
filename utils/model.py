@@ -49,11 +49,6 @@ def mu_detach_params(mod):
     mod, params = relax.frontend.detach_params(mod)
     return mod, params["main"]
 
-def mu_integrate_hashes(mod, params, secret_key):
-    hs, hv_s = mu_hash_params(mod, params, secret_key)
-    mod["main"] = relax.Function(list(mod["main"].params) + hv_s, mod["main"].body)
-    return mod, [tvm.nd.array(h) for h in hs]
-
 def mu_hash(param, key):
     # Instantiate HMAC object
     hmac = HMAC.new(key, digestmod=SHA256)
@@ -83,3 +78,8 @@ def mu_hash_params(mod, params, key): # TODO: Optimize function
             h_vs.append(relax.Var(name, relax.TensorStructInfo(h.shape, "uint64")))
    
     return hs, h_vs
+
+def mu_integrate_hashes(mod, params, secret_key):
+    hs, hv_s = mu_hash_params(mod, params, secret_key)
+    mod["main"] = relax.Function(list(mod["main"].params) + hv_s, mod["main"].body)
+    return mod, [tvm.nd.array(h) for h in hs]

@@ -1,10 +1,8 @@
 import os
 import tvm
 import argparse
-from tvm import relax
 import utils.model as mu
 import utils.rowhammer as ru
-from tvm.ir import Array
 from dotenv import load_dotenv
 
 ROWHAMMER_ACCURACY_THRESHOLD = 0.25
