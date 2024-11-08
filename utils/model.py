@@ -5,9 +5,11 @@ import numpy as np
 import torch.nn as nn
 from tvm import relax
 import torch.optim as optim
+from Crypto.Cipher import AES
 from models.cnn.cnn import CNN
 from models.mlp.mlp import MLP
 from torch.export import export
+from Crypto.Hash import HMAC, SHA256
 from models.cnn.cnn_interactor import CNNInteractor
 from models.mlp.mlp_interactor import MLPInteractor
 from tvm.relax.frontend.torch import from_exported_program
@@ -37,8 +39,47 @@ def mu_build(mod, tgt, dev):
     vm = relax.VirtualMachine(ex, dev)
     return mod, vm
 
-def find_hash_param(params, i):
+def mu_find_hash_param(params, i):
     for p in params:
         if p.name_hint == f'h{i}':
             return p
     return None
+
+def mu_detach_params(mod):
+    mod, params = relax.frontend.detach_params(mod)
+    return mod, params["main"]
+
+def mu_integrate_hashes(mod, params, secret_key):
+    hs, hv_s = mu_hash_params(mod, params, secret_key)
+    mod["main"] = relax.Function(list(mod["main"].params) + hv_s, mod["main"].body)
+    return mod, [tvm.nd.array(h) for h in hs]
+
+def mu_hash(param, key):
+    # Instantiate HMAC object
+    hmac = HMAC.new(key, digestmod=SHA256)
+    # Return 64-bit slice of hash at specified index
+    def get_hash_at_index(p, i):
+        digest = hmac.update(str(p).encode()).digest()
+        return np.frombuffer(digest, dtype=np.uint64)[i]
+    # Stack the 64-bit slices
+    to_stack = []
+    vectorized_func = np.vectorize(get_hash_at_index)
+    for i in range(0, 4):
+        to_stack.append(vectorized_func(param, i))
+        
+    return np.stack(to_stack)
+
+def mu_hash_params(mod, params, key): # TODO: Optimize function
+    hs = []
+    h_vs = []
+    ctr = 0
+    for i, param in enumerate(params):
+        p = mod["main"].params[i+1]
+        if 'b' not in p.name_hint: # Ignore biases for now
+            name = f"h{str(ctr)}"
+            ctr += 1
+            h = (mu_hash(param.asnumpy(), key))
+            hs.append(h)
+            h_vs.append(relax.Var(name, relax.TensorStructInfo(h.shape, "uint64")))
+   
+    return hs, h_vs
