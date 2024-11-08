@@ -33,7 +33,6 @@ def mu_export(model, ex_t):
     return mod
 
 def mu_build(mod, tgt, dev):
-    mod, params = relax.frontend.detach_params(mod)
     ex = relax.build(mod, tgt)
     vm = relax.VirtualMachine(ex, dev)
-    return mod, vm, params["main"]
+    return mod, vm
