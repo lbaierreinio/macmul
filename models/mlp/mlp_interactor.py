@@ -1,20 +1,24 @@
+
 import tvm
 import torch
 import numpy as np
 import torch.nn as nn
+import utils.model as mu
+import utils.helpers as hp
 import torch.optim as optim
 from tvm import IRModule, relax
-import torchvision.transforms as transforms
 from torchvision.datasets import MNIST
 from torch.utils.data import DataLoader
+import torchvision.transforms as transforms
 from tvm.relax.expr_functor import PyExprMutator, mutator
-from tvm.script import relax as R
-
 
 @tvm.register_func("env.mac_mul", override=True)
 def mac_mul(x: tvm.nd.NDArray, w: tvm.nd.NDArray, h: tvm.nd.NDArray, out: tvm.nd.NDArray):
     x_torch = torch.from_dlpack(x)
     w_torch = torch.from_dlpack(w)
+    h_np = np.from_dlpack(h)
+    w_hash = mu.mu_hash(w_torch, hp.get_secret_key())
+    assert np.array_equal(h_np, w_hash)
     out_torch = torch.from_dlpack(out)
     torch.mm(x_torch, w_torch, out=out_torch)
 
@@ -103,11 +107,11 @@ class MLPInteractor:
         mod = MACMulPass()(mod)
         return mod
     
-    def test(self, model, vm, params):
+    def test(self, model, vm, params, single=False):
         # TODO: Fix using test_loader in this way
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
         test_dataset = MNIST(root='./data', train=False, download=True, transform=transform)
-        test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=False)
+        test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=True)
         correct = 0
         total = 0
         for images, labels in test_loader:
@@ -119,6 +123,9 @@ class MLPInteractor:
                 max_index = np.argmax(out)
                 if (max_index == label):
                     correct += 1
+                if single:
+                    print(f"Predicted: {max_index}, Actual: {label}")
+                    break
             break
         return correct/total
 

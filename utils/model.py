@@ -15,7 +15,7 @@ from models.mlp.mlp_interactor import MLPInteractor
 from tvm.relax.frontend.torch import from_exported_program
 
 OPTIONS = {
-        'cnn': (CNN(), CNNInteractor(), 'models/cnn/cnn.pth', torch.randn(1, 1, 28, 28, dtype=torch.float32)),
+        # 'cnn': (CNN(), CNNInteractor(), 'models/cnn/cnn.pth', torch.randn(1, 1, 28, 28, dtype=torch.float32)),
         'mlp': (MLP(), MLPInteractor(), 'models/mlp/mlp.pth', torch.randn(1, 784, dtype=torch.float32)),
         # Add more models here
 }
@@ -50,10 +50,9 @@ def mu_detach_params(mod):
     return mod, params["main"]
 
 def mu_hash(param, key):
-    # Instantiate HMAC object
-    hmac = HMAC.new(key, digestmod=SHA256)
     # Return 64-bit slice of hash at specified index
     def get_hash_at_index(p, i):
+        hmac = HMAC.new(key, digestmod=SHA256)
         digest = hmac.update(str(p).encode()).digest()
         return np.frombuffer(digest, dtype=np.uint64)[i]
     # Stack the 64-bit slices
@@ -73,7 +72,7 @@ def mu_hash_params(mod, params, key): # TODO: Optimize function
         if 'b' not in p.name_hint: # Ignore biases for now
             name = f"h{str(ctr)}"
             ctr += 1
-            h = (mu_hash(param.asnumpy(), key))
+            h = (mu_hash(param.asnumpy().T, key))
             hs.append(h)
             h_vs.append(relax.Var(name, relax.TensorStructInfo(h.shape, "uint64")))
    
