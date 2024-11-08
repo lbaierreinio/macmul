@@ -26,7 +26,7 @@ class MACMul(relax.PyExprMutator):
         # Search for matmul operation
         self.matmul_op = tvm.ir.Op.get("relax.matmul")
         self.counter = 0
-        self.starting_param = 7
+        self.starting_param = 7 # TODO: Remove hard-coded value
         self.params = []
 
     # Transform our IRModule
@@ -48,7 +48,6 @@ class MACMul(relax.PyExprMutator):
 
     # Visit each node in the expression
     def visit_call_(self, call):
-        # TODO: Get parent call
         call = self.visit_expr_post_order(call)
 
         # Check if function matches
@@ -97,9 +96,6 @@ class MLPInteractor:
     
     def transform(self, mod):
         mod = MACMulPass()(mod)
-        '''
-        Currently, we would like to create a transformation that adds parameters to the main
-        '''
         return mod
     
     def test(self, model, vm, params):
