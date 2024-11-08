@@ -36,3 +36,9 @@ def mu_build(mod, tgt, dev):
     ex = relax.build(mod, tgt)
     vm = relax.VirtualMachine(ex, dev)
     return mod, vm
+
+def find_hash_param(params, i):
+    for p in params:
+        if p.name_hint == f'h{i}':
+            return p
+    return None
