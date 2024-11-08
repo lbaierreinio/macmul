@@ -2,13 +2,13 @@ import os
 import tvm
 import argparse
 import utils.model as mu
-import utils.crypto as cu
 import utils.rowhammer as ru
 from dotenv import load_dotenv
 
 ROWHAMMER_ACCURACY_THRESHOLD = 0.25
 
 def main():
+    # Load environment variables
     load_dotenv()
     secret_key = str(os.getenv("SECRET_KEY")).encode('ascii')
 
@@ -23,32 +23,25 @@ def main():
         print("Model is not supported.")
         exit(-1)
     
+    # Define model, hardware, target, and device
     model, interactor, file_path, ex_t = options[args.model]
-
     target = 'llvm'
     device = tvm.cpu()
 
-    # Import & lower the model
-    model = mu.mu_import(model, interactor, file_path)
-    model.eval()
-    mod = mu.mu_export(model, ex_t)
+    model = mu.mu_import(model, interactor, file_path) # Import model from PyTorch or train if not found
+    model.eval() # Set to evaluation mode
+    mod = mu.mu_export(model, ex_t) # Export model to IRModule
+    mod, params = mu.mu_detach_params(mod) # Detach parameters
+    mod, hs = mu.mu_integrate_hashes(mod, params, secret_key) # Integrate hashes into main function
+    mod = interactor.transform(mod) # Transform IRModule
+    mod, vm = mu.mu_build(mod, target, device) # Build for our target & device
 
-    # Perform model-specific transformations
-    mod = interactor.transform(mod)
-    
     mod.show()
 
-    mod, vm, params = mu.mu_build(mod, target, device)
-
-    hashes = [tvm.nd.array(cu.cu_hash(param.asnumpy(), secret_key)) for param in params]
-
-    params = [tvm.nd.array(param) for param in params]
-
-    # User interface
     while True:
         choice = input("Enter 't' to test the model, 'rh' to launch a Rowhammer attack, 'q' to quit: ")
         if choice == 't':
-            accuracy = interactor.test(model, vm, params)
+            accuracy = interactor.test(model, vm, [*params, *hs])
             print(f"Accuracy: {accuracy:.4f}")
         # Rowhammer attack until threshold is met
         elif choice == 'rh':
@@ -57,7 +50,7 @@ def main():
             while accuracy > ROWHAMMER_ACCURACY_THRESHOLD:
                 for _ in range(10):
                     ru.ru_rowhammer(params)
-                accuracy = interactor.test(model, vm, params)
+                accuracy = interactor.test(model, vm, [*params, *hs])
                 print(f"Accuracy: {accuracy:.4f}")
         # Quit
         elif choice == 'q':
