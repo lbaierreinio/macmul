@@ -108,7 +108,7 @@ class MLPInteractor:
         mod = MACMulPass()(mod)
         return mod
     
-    def test(self, model, vm, params):
+    def test(self, model, vm, params, single=False):
         # TODO: Fix using test_loader in this way
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
         test_dataset = MNIST(root='./data', train=False, download=True, transform=transform)
@@ -124,6 +124,9 @@ class MLPInteractor:
                 max_index = np.argmax(out)
                 if (max_index == label):
                     correct += 1
+                if single:
+                    print(f"Predicted: {max_index}, Actual: {label}")
+                    break
             break
         return correct/total
 

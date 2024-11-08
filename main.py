@@ -33,10 +33,13 @@ def main():
     mod, vm = mu.mu_build(mod, target, device) # Build for our target & device
 
     mod.show()
-
     while True:
         choice = input("Enter 't' to test the model, 'rh' to launch a Rowhammer attack, 'q' to quit: ")
-        if choice == 't':
+        if choice == 'st':
+            interactor.test(model, vm, [*params, *hs], True)
+        elif choice == 'srh':
+            ru.ru_rowhammer(params)
+        elif choice == 't':
             accuracy = interactor.test(model, vm, [*params, *hs])
             print(f"Accuracy: {accuracy:.4f}")
         # Rowhammer attack until threshold is met

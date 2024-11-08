@@ -5,11 +5,11 @@ import torch.optim as optim
 class MLP(nn.Module):
     def __init__(self):
         super(MLP, self).__init__()
-        self.linear1 = nn.Linear(784, 2)
+        self.linear1 = nn.Linear(784, 128)
         self.relu1 = nn.ReLU()
-        self.linear2 = nn.Linear(2, 2)
+        self.linear2 = nn.Linear(128, 128)
         self.relu2 = nn.ReLU()
-        self.linear3 = nn.Linear(2, 10)
+        self.linear3 = nn.Linear(128, 10)
     def forward(self, x):
         x = self.linear1(x)
         x = self.relu1(x)
