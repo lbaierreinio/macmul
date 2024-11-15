@@ -50,18 +50,10 @@ def mu_detach_params(mod):
     return mod, params["main"]
 
 def mu_hash(param, key):
-    # Return 64-bit slice of hash at specified index
-    def get_hash_at_index(p, i):
-        hmac = HMAC.new(key, digestmod=SHA256)
-        digest = hmac.update(str(p).encode()).digest()
-        return np.frombuffer(digest, dtype=np.uint64)[i]
-    # Stack the 64-bit slices
-    to_stack = []
-    vectorized_func = np.vectorize(get_hash_at_index)
-    for i in range(0, 4):
-        to_stack.append(vectorized_func(param, i))
-        
-    return np.stack(to_stack)
+    s = round(param.sum(), 4)
+    hmac = HMAC.new(key, digestmod=SHA256)
+    digest = hmac.update(str(s).encode()).digest()
+    return np.frombuffer(digest, dtype=np.uint64)
 
 def mu_hash_params(mod, params, key): # TODO: Optimize function
     hs = []
