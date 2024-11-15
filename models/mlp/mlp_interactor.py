@@ -1,5 +1,7 @@
 import tvm
 import torch
+import ctypes
+import random
 import numpy as np
 import torch.nn as nn
 import utils.model as mu
@@ -11,15 +13,19 @@ from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 from tvm.relax.expr_functor import PyExprMutator, mutator
 
+def mac_prob():
+    return random.random() < 0.2
+
+my_lib = ctypes.CDLL("/u/lucbr/csc2231-final-project/models/mlp/libmac_mul.so") # TODO: Fix 
+
 @tvm.register_func("env.mac_mul", override=True)
-def mac_mul(x: tvm.nd.NDArray, w: tvm.nd.NDArray, h: tvm.nd.NDArray, out: tvm.nd.NDArray):
-    x_torch = torch.from_dlpack(x)
+def mac_mul(w: tvm.nd.NDArray, h: tvm.nd.NDArray, o: tvm.nd.NDArray):
+    # my_lib.mac_mul(ctypes.byref(x.handle), ctypes.byref(w.handle), ctypes.byref(h.handle), ctypes.byref(out.handle))
     w_torch = torch.from_dlpack(w)
-    h_np = np.from_dlpack(h)
-    w_hash = mu.mu_hash(w_torch, hp.get_secret_key())
-    assert np.array_equal(h_np, w_hash)
-    out_torch = torch.from_dlpack(out)
-    torch.mm(x_torch, w_torch, out=out_torch)
+    if mac_prob():
+        h_np = np.from_dlpack(h)
+        w_hash = mu.mu_hash(w_torch, hp.get_secret_key())
+        assert np.array_equal(h_np, w_hash)
 
 @relax.expr_functor.mutator
 class MACMul(relax.PyExprMutator):
@@ -81,7 +87,8 @@ class MACMul(relax.PyExprMutator):
         self.counter += 1
         with bb.function(fn_name, [param_x, param_w, param_h]):
             with bb.dataflow():
-                gv = bb.emit(relax.op.call_dps_packed("env.mac_mul", (param_x, param_w, param_h), relax.TensorStructInfo((1, w.struct_info.shape[1]), w.struct_info.dtype)))
+                gv = bb.emit_output(relax.op.matmul(param_x, param_w))
+                bb.emit(relax.op.call_dps_packed("env.mac_mul", (param_w, param_h), relax.TensorStructInfo((1, w.struct_info.shape[1]), w.struct_info.dtype)))
             bb.emit_func_output(gv)
 
         # Add Primitive attribute to the fused functions

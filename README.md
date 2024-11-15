@@ -19,3 +19,8 @@ python3 ./main.py [model]
 
 ### legacy
 * Files that are no longer in use or were created solely for testing purposes.
+
+> **Note:** The .so file needs to be readable and executable. chmod +rx /path/to/libmac_mul.so
+
+Compile with gcc using this:
+ g++ -shared -fPIC -o libmac_mul.so cpp/mac_mul.cpp -I/w/340/lucbr/tvm/include -I/w/340/lucbr/tvm/3rdparty/dmlc-core/include -I/w/340/lucbr/tvm/3rdparty/dlpack/include
