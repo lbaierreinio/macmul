@@ -14,7 +14,7 @@ import torchvision.transforms as transforms
 from tvm.relax.expr_functor import PyExprMutator, mutator
 
 def mac_prob():
-    return random.random() < 0.8
+    return random.random() < 0.0
 
 @tvm.register_func("env.mac_mul", override=True)
 def mac_mul(w: tvm.nd.NDArray, h: tvm.nd.NDArray, o: tvm.nd.NDArray):

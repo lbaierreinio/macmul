@@ -16,9 +16,7 @@ from models.mlp.mlp_interactor import MLPInteractor
 from tvm.relax.frontend.torch import from_exported_program
 
 OPTIONS = {
-        # 'cnn': (CNN(), CNNInteractor(), 'models/cnn/cnn.pth', torch.randn(1, 1, 28, 28, dtype=torch.float32)),
         'mlp': (MLP(), MLPInteractor(), 'models/mlp/mlp.pth', torch.randn(1, 784, dtype=torch.float32)),
-        # Add more models here
 }
 
 def mu_import(model, interactor, file_path):
