@@ -61,7 +61,8 @@ def mu_hash(param, key, chunk_length=16):
         cobj.update(struct.pack('d', s))
 
     digest = cobj.digest()
-    return np.frombuffer(digest, dtype=np.uint64)
+    output = np.frombuffer(digest, dtype=np.uint64)
+    return output # Returns an array of 2 uint64s
 
 def mu_hash_params(mod, params, key): # TODO: Optimize function
     hs = []
