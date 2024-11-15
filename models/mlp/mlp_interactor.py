@@ -129,7 +129,8 @@ class MLPInteractor:
                 if single:
                     print(f"Predicted: {max_index}, Actual: {label}")
                     break
-            break
+            if single:
+                break
         return correct/total
 
     def train(self, model, epochs=5):
