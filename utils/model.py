@@ -54,18 +54,11 @@ def mu_hash(param, key, chunk_length=16):
     row_sums = np.sum(param, axis=1)
     cobj = CMAC.new(key, ciphermod=AES)
 
-    for r in range(0, len(row_sums)):
+    for r in row_sums:
         s = round(r, 4)
         cobj.update(str(s).encode())
 
-    '''
-    for i in range(0, len(flattened_params), chunk_length):
-        chunk = flattened_params[i:i+chunk_length]
-        s = round(chunk.sum(), 4)
-        cobj.update(str(s).encode())
-    '''
     digest = cobj.digest()
-
     return np.frombuffer(digest, dtype=np.uint64)
 
 def mu_hash_params(mod, params, key): # TODO: Optimize function
