@@ -14,17 +14,17 @@ import torchvision.transforms as transforms
 from tvm.relax.expr_functor import PyExprMutator, mutator
 
 def mac_prob():
-    return random.random() < 0.2
+    return random.random() < 0.8
 
 my_lib = ctypes.CDLL("/u/lucbr/csc2231-final-project/models/mlp/libmac_mul.so") # TODO: Fix 
 
 @tvm.register_func("env.mac_mul", override=True)
 def mac_mul(w: tvm.nd.NDArray, h: tvm.nd.NDArray, o: tvm.nd.NDArray):
     # my_lib.mac_mul(ctypes.byref(x.handle), ctypes.byref(w.handle), ctypes.byref(h.handle), ctypes.byref(out.handle))
-    w_torch = torch.from_dlpack(w)
+    w_np = np.from_dlpack(w)
     if mac_prob():
         h_np = np.from_dlpack(h)
-        w_hash = mu.mu_hash(w_torch, hp.get_secret_key())
+        w_hash = mu.mu_hash(w_np, hp.get_secret_key())
         assert np.array_equal(h_np, w_hash)
 
 @relax.expr_functor.mutator
