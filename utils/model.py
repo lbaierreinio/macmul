@@ -50,15 +50,20 @@ def mu_detach_params(mod):
     return mod, params["main"]
 
 def mu_hash(param, key, chunk_length=16):
-    flattened_params = param.flatten() # Flatten to 1D array if wasn't already
-
+    # flattened_params = param.flatten() # Flatten to 1D array if wasn't already
+    row_sums = np.sum(param, axis=1)
     cobj = CMAC.new(key, ciphermod=AES)
 
+    for r in range(0, len(row_sums)):
+        s = round(r, 4)
+        cobj.update(str(s).encode())
+
+    '''
     for i in range(0, len(flattened_params), chunk_length):
         chunk = flattened_params[i:i+chunk_length]
         s = round(chunk.sum(), 4)
         cobj.update(str(s).encode())
-
+    '''
     digest = cobj.digest()
 
     return np.frombuffer(digest, dtype=np.uint64)
