@@ -2,7 +2,6 @@ import os
 import tvm
 import argparse
 import utils.model as mu
-import utils.helpers as hp
 import utils.rowhammer as ru
 
 ROWHAMMER_ACCURACY_THRESHOLD = 0.25
@@ -18,19 +17,12 @@ def main():
     if args.model not in options.keys():
         print("Model is not supported.")
         exit(-1)
+
     
     # Define model, hardware, target, and device
     model, interactor, file_path, ex_t = options[args.model]
-    target = 'llvm'
-    device = tvm.cpu()
 
-    model = mu.mu_import(model, interactor, file_path) # Import model from PyTorch or train if not found
-    model.eval() # Set to evaluation mode
-    mod = mu.mu_export(model, ex_t) # Export model to IRModule
-    mod, params = mu.mu_detach_params(mod) # Detach parameters
-    mod, hs = mu.mu_integrate_hashes(mod, params, hp.get_secret_key()) # Integrate hashes into main function
-    mod = interactor.transform(mod) # Transform IRModule
-    mod, vm = mu.mu_build(mod, target, device) # Build for our target & device
+    mod, vm, params, hs = mu.mu_get_model_and_vm(model, interactor, file_path, ex_t)
 
     mod.show()
     while True:
