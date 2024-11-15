@@ -49,10 +49,18 @@ def mu_detach_params(mod):
     mod, params = relax.frontend.detach_params(mod)
     return mod, params["main"]
 
-def mu_hash(param, key):
-    s = round(param.sum(), 4)
-    hmac = CMAC.new(key, ciphermod=AES)
-    digest = hmac.update(str(s).encode()).digest()
+def mu_hash(param, key, chunk_length=16):
+    flattened_params = param.flatten() # Flatten to 1D array if wasn't already
+
+    cobj = CMAC.new(key, ciphermod=AES)
+
+    for i in range(0, len(flattened_params), chunk_length):
+        chunk = flattened_params[i:i+chunk_length]
+        s = round(chunk.sum(), 4)
+        cobj.update(str(s).encode())
+
+    digest = cobj.digest()
+
     return np.frombuffer(digest, dtype=np.uint64)
 
 def mu_hash_params(mod, params, key): # TODO: Optimize function
