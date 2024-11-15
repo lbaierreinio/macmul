@@ -9,7 +9,7 @@ from Crypto.Cipher import AES
 from models.cnn.cnn import CNN
 from models.mlp.mlp import MLP
 from torch.export import export
-from Crypto.Hash import HMAC, SHA256
+from Crypto.Hash import CMAC
 from models.cnn.cnn_interactor import CNNInteractor
 from models.mlp.mlp_interactor import MLPInteractor
 from tvm.relax.frontend.torch import from_exported_program
@@ -51,7 +51,7 @@ def mu_detach_params(mod):
 
 def mu_hash(param, key):
     s = round(param.sum(), 4)
-    hmac = HMAC.new(key, digestmod=SHA256)
+    hmac = CMAC.new(key, ciphermod=AES)
     digest = hmac.update(str(s).encode()).digest()
     return np.frombuffer(digest, dtype=np.uint64)
 
