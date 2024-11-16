@@ -1,8 +1,8 @@
 import os
 import tvm
 import argparse
+import utils.timer as tu
 import utils.model as mu
-import utils.helpers as hp
 import utils.rowhammer as ru
 
 ROWHAMMER_ACCURACY_THRESHOLD = 0.25
@@ -18,30 +18,28 @@ def main():
     if args.model not in options.keys():
         print("Model is not supported.")
         exit(-1)
+
     
     # Define model, hardware, target, and device
-    model, interactor, file_path, ex_t = options[args.model]
-    target = 'llvm'
-    device = tvm.cpu()
+    model, interactor, file_path, ex_t, inference_limit = options[args.model]
 
-    model = mu.mu_import(model, interactor, file_path) # Import model from PyTorch or train if not found
-    model.eval() # Set to evaluation mode
-    mod = mu.mu_export(model, ex_t) # Export model to IRModule
-    mod, params = mu.mu_detach_params(mod) # Detach parameters
-    mod, hs = mu.mu_integrate_hashes(mod, params, hp.get_secret_key()) # Integrate hashes into main function
-    mod = interactor.transform(mod) # Transform IRModule
-    mod, vm = mu.mu_build(mod, target, device) # Build for our target & device
+    # Get the line of best fit for the inference_limit we want.
+    m, b = tu.tu_get_line(model, interactor, file_path, ex_t, iterations_per_budget=10, lo=0, hi=2000, step=25, plot_path='budget_times.pdf')
+
+    budget = int(m * inference_limit + b)
+
+    mod, vm, params, hs, ps = mu.mu_get_model_and_vm(model, interactor, file_path, ex_t, budget)
 
     mod.show()
     while True:
         choice = input("Enter choice (st, srh, t, rh, q): ")
         try: 
             if choice == 'st': # Single Test
-                interactor.test(model, vm, [*params, *hs], True)
+                interactor.test(model, vm, [*params, *hs, *ps], True)
             elif choice == 'srh': # Single Rowhammer
                 ru.ru_rowhammer(params)
             elif choice == 't': # Bulk Test on Accuracy
-                accuracy = interactor.test(model, vm, [*params, *hs])
+                accuracy = interactor.test(model, vm, [*params, *hs, *ps])
                 print(f"Accuracy: {accuracy:.4f}")
             elif choice == 'rh': # Rowhammer until certain threshold is met
                 print("Launching Rowhammer attack...")

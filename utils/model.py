@@ -1,23 +1,21 @@
 import tvm
 import os
 import torch
+import struct
 import numpy as np
 import torch.nn as nn
 from tvm import relax
+import utils.helpers as hp
 import torch.optim as optim
+from Crypto.Hash import CMAC
 from Crypto.Cipher import AES
-from models.cnn.cnn import CNN
 from models.mlp.mlp import MLP
 from torch.export import export
-from Crypto.Hash import HMAC, SHA256
-from models.cnn.cnn_interactor import CNNInteractor
 from models.mlp.mlp_interactor import MLPInteractor
 from tvm.relax.frontend.torch import from_exported_program
 
 OPTIONS = {
-        # 'cnn': (CNN(), CNNInteractor(), 'models/cnn/cnn.pth', torch.randn(1, 1, 28, 28, dtype=torch.float32)),
-        'mlp': (MLP(), MLPInteractor(), 'models/mlp/mlp.pth', torch.randn(1, 784, dtype=torch.float32)),
-        # Add more models here
+    'mlp': (MLP(), MLPInteractor(), 'models/mlp/mlp.pth', torch.randn(1, 784, dtype=torch.float32), 0.025),
 }
 
 def mu_import(model, interactor, file_path):
@@ -49,36 +47,78 @@ def mu_detach_params(mod):
     mod, params = relax.frontend.detach_params(mod)
     return mod, params["main"]
 
-def mu_hash(param, key):
-    # Return 64-bit slice of hash at specified index
-    def get_hash_at_index(p, i):
-        hmac = HMAC.new(key, digestmod=SHA256)
-        digest = hmac.update(str(p).encode()).digest()
-        return np.frombuffer(digest, dtype=np.uint64)[i]
-    # Stack the 64-bit slices
-    to_stack = []
-    vectorized_func = np.vectorize(get_hash_at_index)
-    for i in range(0, 4):
-        to_stack.append(vectorized_func(param, i))
-        
-    return np.stack(to_stack)
+def mu_hash(param, key, num_hashes=1):
+    flattened_params = param.flatten()
 
-def mu_hash_params(mod, params, key): # TODO: Optimize function
+    cobj = CMAC.new(key, ciphermod=AES)
+
+    chunk_length = len(flattened_params) // num_hashes
+
+    for i in range(0, len(flattened_params), chunk_length):
+        chunk = flattened_params[i:i+chunk_length]
+        s = round(chunk.sum(), 4)
+        cobj.update(struct.pack('d', s))
+
+    digest = cobj.digest()
+    output = np.frombuffer(digest, dtype=np.uint64)
+    return output # Returns an array of 2 uint64s
+
+def mu_hash_params(mod, params, ps, key): # TODO: Optimize function
     hs = []
     h_vs = []
     ctr = 0
     for i, param in enumerate(params):
         p = mod["main"].params[i+1]
-        if 'b' not in p.name_hint: # Ignore biases for now
-            name = f"h{str(ctr)}"
-            ctr += 1
-            h = (mu_hash(param.asnumpy().T, key))
-            hs.append(h)
-            h_vs.append(relax.Var(name, relax.TensorStructInfo(h.shape, "uint64")))
+        name = f"h{str(ctr)}"
+        ctr += 1
+        h = (mu_hash(param.asnumpy().T, key, 1 if int(ps[i][0]) == 0 else int(ps[i][0]))) # TODO: Set value here
+        hs.append(h)
+        h_vs.append(relax.Var(name, relax.TensorStructInfo(h.shape, "uint64")))
    
     return hs, h_vs
 
-def mu_integrate_hashes(mod, params, secret_key):
-    hs, hv_s = mu_hash_params(mod, params, secret_key)
-    mod["main"] = relax.Function(list(mod["main"].params) + hv_s, mod["main"].body)
-    return mod, [tvm.nd.array(h) for h in hs]
+def mu_integrate_hashes(mod, params, budget, secret_key):
+    ps, pv_s = mu_compute_hash_schedule(params, budget)
+    hs, hv_s = mu_hash_params(mod, params, ps, secret_key)
+    mod["main"] = relax.Function(list(mod["main"].params) + hv_s + pv_s, mod["main"].body)
+    return mod, [tvm.nd.array(h) for h in hs], [tvm.nd.array(p) for p in ps]
+
+def mu_compute_hash_schedule(params, budget):
+    '''
+    Determine how many hashes each layer should have based on the budget.
+    '''
+
+    layer_params = []
+    for p in params:
+        layer_params.append(np.prod(p.shape))
+
+    total = np.sum(layer_params) # Total number of parameters
+    percentage_arr = (layer_params / total) # Percentage of each layer
+    
+    hashes_per_layer = np.ceil(percentage_arr * budget).astype(np.uint64) # Number of hashes per layer
+
+    hashes_per_layer = np.where(budget == 0, 0, hashes_per_layer) # If budget is 0, no hashes
+
+    ps = []
+    p_vs = []
+
+    for i,p in enumerate(hashes_per_layer):
+        name = f"b{i}"
+        ps.append([p])
+        p_vs.append(relax.Var(name, relax.TensorStructInfo((1,), "uint64")))
+    
+    return ps, p_vs
+
+def mu_get_model_and_vm(model, interactor, file_path, ex_t, budget):
+    target = 'llvm'
+    device = tvm.cpu()
+
+    model = mu_import(model, interactor, file_path) # Import model from PyTorch or train if not found
+    model.eval() # Set to evaluation mode
+    mod = mu_export(model, ex_t) # Export model to IRModule
+    mod, params = mu_detach_params(mod) # Detach parameters
+    mod, hs, ps = mu_integrate_hashes(mod, params, budget, hp.get_secret_key()) # Integrate hashes into main function
+    mod = interactor.transform(mod) # Transform IRModule
+    mod, vm = mu_build(mod, target, device) # Build for our target & device
+
+    return mod, vm, params, hs, ps
