@@ -1,6 +1,5 @@
 import tvm
 import torch
-import ctypes
 import random
 import numpy as np
 import torch.nn as nn
