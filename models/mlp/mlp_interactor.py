@@ -17,11 +17,12 @@ def mac_prob():
     return random.random() <= hp.get_mac_prob()
 
 @tvm.register_func("env.mac_mul", override=True)
-def mac_mul(w: tvm.nd.NDArray, h: tvm.nd.NDArray, o: tvm.nd.NDArray):
-    if mac_prob():
+def mac_mul(w: tvm.nd.NDArray, h: tvm.nd.NDArray, p: tvm.nd.NDArray, o: tvm.nd.NDArray):
+    num_hashes = np.from_dlpack(p)[0]
+    if num_hashes > 0 and mac_prob():
         w_np = np.from_dlpack(w)
         h_hash = np.from_dlpack(h)
-        w_hash = mu.mu_hash(w_np, hp.get_secret_key())
+        w_hash = mu.mu_hash(w_np, hp.get_secret_key(), num_hashes)
         assert np.array_equal(h_hash, w_hash)
 
 @relax.expr_functor.mutator
@@ -32,7 +33,8 @@ class MACMul(relax.PyExprMutator):
         # Search for matmul operation
         self.matmul_op = tvm.ir.Op.get("relax.matmul")
         self.counter = 0
-        self.starting_param = 1
+        self.h_starting_param = 1
+        self.p_starting_param = 1
         self.params = []
 
     # Transform our IRModule
@@ -48,8 +50,9 @@ class MACMul(relax.PyExprMutator):
             # Set initial value for the counter
             for i,p in enumerate(self.params):
                 if p.name_hint == 'h0':
-                    self.starting_param = i
-                    break
+                    self.h_starting_param = i
+                if p.name_hint == 'b0':
+                    self.p_starting_param = i
             updated_func = self.visit_expr(func)
             # Remove the unused matmul operations
             updated_func = relax.analysis.remove_all_unused(updated_func) 
@@ -77,15 +80,16 @@ class MACMul(relax.PyExprMutator):
         # construct a new fused primitive function
         param_x = relax.Var("x" ,relax.TensorStructInfo(x.struct_info.shape, x.struct_info.dtype))
         param_w = relax.Var("w" ,relax.TensorStructInfo(w.struct_info.shape, w.struct_info.dtype))
-        param_h = self.params[self.counter + self.starting_param]
+        param_h = self.params[self.counter + self.h_starting_param]
+        param_p = self.params[self.counter + self.p_starting_param]
 
         bb = relax.BlockBuilder()
         fn_name = "mac_mul%d" % (self.counter)
         self.counter += 1
-        with bb.function(fn_name, [param_x, param_w, param_h]):
+        with bb.function(fn_name, [param_x, param_w, param_h, param_p]):
             with bb.dataflow():
                 gv = bb.emit_output(relax.op.matmul(param_x, param_w))
-                bb.emit(relax.op.call_dps_packed("env.mac_mul", (param_w, param_h), relax.TensorStructInfo((1, w.struct_info.shape[1]), w.struct_info.dtype)))
+                bb.emit(relax.op.call_dps_packed("env.mac_mul", (param_w, param_h, param_p), relax.TensorStructInfo((1, w.struct_info.shape[1]), w.struct_info.dtype)))
             bb.emit_func_output(gv)
 
         # Add Primitive attribute to the fused functions
@@ -93,7 +97,7 @@ class MACMul(relax.PyExprMutator):
         global_var = self.builder_.add_func(fused_fn, fn_name)
 
         # construct call into the fused function
-        return relax.Call(global_var, [x, w, param_h], None, None)
+        return relax.Call(global_var, [x, w, param_h, param_p], None, None)
 
 @tvm.ir.transform.module_pass(opt_level=1, name="MACMul")
 class MACMulPass:
@@ -111,7 +115,6 @@ class MLPInteractor:
         return mod
     
     def test(self, model, vm, params, single=False):
-        # TODO: Fix using test_loader in this way
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
         test_dataset = MNIST(root='./data', train=False, download=True, transform=transform)
         test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=True)

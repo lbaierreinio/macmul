@@ -15,7 +15,7 @@ from models.mlp.mlp_interactor import MLPInteractor
 from tvm.relax.frontend.torch import from_exported_program
 
 OPTIONS = {
-        'mlp': (MLP(), MLPInteractor(), 'models/mlp/mlp.pth', torch.randn(1, 784, dtype=torch.float32)),
+    'mlp': (MLP(), MLPInteractor(), 'models/mlp/mlp.pth', torch.randn(1, 784, dtype=torch.float32), 0.025),
 }
 
 def mu_import(model, interactor, file_path):
@@ -63,7 +63,7 @@ def mu_hash(param, key, num_hashes=1):
     output = np.frombuffer(digest, dtype=np.uint64)
     return output # Returns an array of 2 uint64s
 
-def mu_hash_params(mod, params, key): # TODO: Optimize function
+def mu_hash_params(mod, params, ps, key): # TODO: Optimize function
     hs = []
     h_vs = []
     ctr = 0
@@ -71,18 +71,45 @@ def mu_hash_params(mod, params, key): # TODO: Optimize function
         p = mod["main"].params[i+1]
         name = f"h{str(ctr)}"
         ctr += 1
-        h = (mu_hash(param.asnumpy().T, key)) # TODO: Set value here
+        h = (mu_hash(param.asnumpy().T, key, 1 if int(ps[i][0]) == 0 else int(ps[i][0]))) # TODO: Set value here
         hs.append(h)
         h_vs.append(relax.Var(name, relax.TensorStructInfo(h.shape, "uint64")))
    
     return hs, h_vs
 
-def mu_integrate_hashes(mod, params, secret_key):
-    hs, hv_s = mu_hash_params(mod, params, secret_key)
-    mod["main"] = relax.Function(list(mod["main"].params) + hv_s, mod["main"].body)
-    return mod, [tvm.nd.array(h) for h in hs]
+def mu_integrate_hashes(mod, params, budget, secret_key):
+    ps, pv_s = mu_compute_hash_schedule(params, budget)
+    hs, hv_s = mu_hash_params(mod, params, ps, secret_key)
+    mod["main"] = relax.Function(list(mod["main"].params) + hv_s + pv_s, mod["main"].body)
+    return mod, [tvm.nd.array(h) for h in hs], [tvm.nd.array(p) for p in ps]
 
-def mu_get_model_and_vm(model, interactor, file_path, ex_t):
+def mu_compute_hash_schedule(params, budget):
+    '''
+    Determine how many hashes each layer should have based on the budget.
+    '''
+
+    layer_params = []
+    for p in params:
+        layer_params.append(np.prod(p.shape))
+
+    total = np.sum(layer_params) # Total number of parameters
+    percentage_arr = (layer_params / total) # Percentage of each layer
+    
+    hashes_per_layer = np.ceil(percentage_arr * budget).astype(np.uint64) # Number of hashes per layer
+
+    hashes_per_layer = np.where(budget == 0, 0, hashes_per_layer) # If budget is 0, no hashes
+
+    ps = []
+    p_vs = []
+
+    for i,p in enumerate(hashes_per_layer):
+        name = f"b{i}"
+        ps.append([p])
+        p_vs.append(relax.Var(name, relax.TensorStructInfo((1,), "uint64")))
+    
+    return ps, p_vs
+
+def mu_get_model_and_vm(model, interactor, file_path, ex_t, budget):
     target = 'llvm'
     device = tvm.cpu()
 
@@ -90,8 +117,8 @@ def mu_get_model_and_vm(model, interactor, file_path, ex_t):
     model.eval() # Set to evaluation mode
     mod = mu_export(model, ex_t) # Export model to IRModule
     mod, params = mu_detach_params(mod) # Detach parameters
-    mod, hs = mu_integrate_hashes(mod, params, hp.get_secret_key()) # Integrate hashes into main function
+    mod, hs, ps = mu_integrate_hashes(mod, params, budget, hp.get_secret_key()) # Integrate hashes into main function
     mod = interactor.transform(mod) # Transform IRModule
     mod, vm = mu_build(mod, target, device) # Build for our target & device
 
-    return mod, vm, params, hs
+    return mod, vm, params, hs, ps
