@@ -11,7 +11,7 @@ def tu_get_line(model, interactor, file_path, ex_t, *, iterations_per_budget, lo
     budgets = []
     
     # Test out a number of different budgets
-    for budget in range(0, 2000, 25):
+    for budget in range(lo, hi, step):
         mod, vm, params, hs, ps = mu.mu_get_model_and_vm(model, interactor, file_path, ex_t, budget) # Build model with the given budget
         all_params = [*params, *hs, *ps]
         budget_t = []
