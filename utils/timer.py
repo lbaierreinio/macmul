@@ -97,3 +97,23 @@ def tu_get_probability_of_detection(
     plt.legend(title='Number of Hashes')
     plt.grid(True)
     plt.savefig(plot_path, format='pdf')
+
+def tu_get_runtime_probabilities(model, interactor, file_path, ex_t, *, iterations_per_test, budget, probability_schedules):
+    f = open("experiments/probabilities.txt", "w")
+    probability_schedules.insert(0, [0.] * len(probability_schedules[0]))
+    for probability_schedule in probability_schedules:
+        mod, vm, params, hs, ps, prs = mu.mu_get_model_and_vm(model, interactor, file_path, ex_t, budget, probability_schedule)
+        all_params = [*params, *hs, *ps, *prs]
+        times = []
+        for i in range(0, iterations_per_test):
+            start = time.perf_counter()
+            vm["main"](tvm.nd.array(ex_t), *all_params)[0]
+            end = time.perf_counter()
+            times.append(end - start)
+        
+        f.write("---------------------SCHEDULE---------------------\n")
+        for i, p in enumerate(probability_schedule):
+            f.write(f"Layer {i}: Probability {p}\n")
+        
+        f.write(f"Average Run-time: {round(np.mean(times) * 1e3, 3)} (ms)\n\n")
+    f.close()
