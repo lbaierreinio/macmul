@@ -118,7 +118,7 @@ class MLPInteractor:
     def test(self, model, vm, params, single=False):
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
         test_dataset = MNIST(root='./data', train=False, download=True, transform=transform)
-        test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=True)
+        test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=False)
         correct = 0
         total = 0
         for images, labels in test_loader:
@@ -133,8 +133,7 @@ class MLPInteractor:
                 if single:
                     print(f"Predicted: {max_index}, Actual: {label}")
                     break
-            if single:
-                break
+            break
         return correct/total
 
     def train(self, model, epochs=5):

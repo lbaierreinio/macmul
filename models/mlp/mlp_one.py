@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-class MLP(nn.Module):
+class MLPOne(nn.Module):
     def __init__(self):
-        super(MLP, self).__init__()
+        super(MLPOne, self).__init__()
         self.linear1 = nn.Linear(784, 128, bias=False)
         self.relu1 = nn.ReLU()
         self.linear2 = nn.Linear(128, 128, bias=False)

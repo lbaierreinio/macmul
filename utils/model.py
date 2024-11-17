@@ -9,13 +9,17 @@ import utils.helpers as hp
 import torch.optim as optim
 from Crypto.Hash import CMAC
 from Crypto.Cipher import AES
-from models.mlp.mlp import MLP
+from models.mlp.mlp_one import MLPOne
+from models.mlp.mlp_two import MLPTwo
+from models.mlp.mlp_three import MLPThree
 from torch.export import export
 from models.mlp.mlp_interactor import MLPInteractor
 from tvm.relax.frontend.torch import from_exported_program
 
 OPTIONS = {
-    'mlp': (MLP(), MLPInteractor(), 'models/mlp/mlp.pth', torch.randn(1, 784, dtype=torch.float32), 10, [0.1, 0.1, 0.95]),
+    'mlp1': (MLPOne(), MLPInteractor(), 'models/mlp/mlp1.pth', torch.randn(1, 784, dtype=torch.float32), 10, [0.1, 0.1, 0.95]),
+    'mlp2': (MLPTwo(), MLPInteractor(), 'models/mlp/mlp2.pth', torch.randn(1, 784, dtype=torch.float32), 10, [0.1, 0.1, 0.1, 0.1, 0.95]),
+    'mlp3': (MLPThree(), MLPInteractor(), 'models/mlp/mlp3.pth', torch.randn(1, 784, dtype=torch.float32), 10, [0.1, 0.1, 0.95]),
 }
 
 def mu_import(model, interactor, file_path):
