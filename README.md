@@ -2,7 +2,7 @@
 The purpose of this project is to use the Apache TVM framework to implement MAC integrity protection in DNNs. This is important as Rowhammer attacks are becoming more feasible with increasing DRAM density. Attacks have shown that intelligently flipping bits a small number of bits within DNN parameters can significantly degrade the performance of the model.
 
 ## Steps to Run
-ssh lucbr@compos0.cs.toronto.edu
+ssh lucbr@comps0.cs.toronto.edu
 
 cd into final project directory
 
