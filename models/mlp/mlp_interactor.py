@@ -12,13 +12,11 @@ from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 from tvm.relax.expr_functor import PyExprMutator, mutator
 
-def mac_prob():
-    return random.random() <= hp.get_mac_prob()
-
 @tvm.register_func("env.mac_mul", override=True)
-def mac_mul(w: tvm.nd.NDArray, h: tvm.nd.NDArray, p: tvm.nd.NDArray, o: tvm.nd.NDArray):
+def mac_mul(w: tvm.nd.NDArray, h: tvm.nd.NDArray, p: tvm.nd.NDArray, pr: tvm.nd.NDArray, o: tvm.nd.NDArray):
     num_hashes = np.from_dlpack(p)[0]
-    if num_hashes > 0 and mac_prob():
+    mac_prob = random.random() < np.from_dlpack(pr)[0]
+    if num_hashes > 0 and mac_prob:
         w_np = np.from_dlpack(w)
         h_hash = np.from_dlpack(h)
         w_hash = mu.mu_hash(w_np, hp.get_secret_key(), num_hashes)
@@ -34,6 +32,7 @@ class MACMul(relax.PyExprMutator):
         self.counter = 0
         self.h_starting_param = 1
         self.p_starting_param = 1
+        self.pr_starting_param = 1
         self.params = []
 
     # Transform our IRModule
@@ -52,6 +51,8 @@ class MACMul(relax.PyExprMutator):
                     self.h_starting_param = i
                 if p.name_hint == 'b0':
                     self.p_starting_param = i
+                if p.name_hint == 'p0':
+                    self.pr_starting_param = i
             updated_func = self.visit_expr(func)
             # Remove the unused matmul operations
             updated_func = relax.analysis.remove_all_unused(updated_func) 
@@ -81,14 +82,15 @@ class MACMul(relax.PyExprMutator):
         param_w = relax.Var("w" ,relax.TensorStructInfo(w.struct_info.shape, w.struct_info.dtype))
         param_h = self.params[self.counter + self.h_starting_param]
         param_p = self.params[self.counter + self.p_starting_param]
+        param_pr = self.params[self.counter + self.pr_starting_param]
 
         bb = relax.BlockBuilder()
         fn_name = "mac_mul%d" % (self.counter)
         self.counter += 1
-        with bb.function(fn_name, [param_x, param_w, param_h, param_p]):
+        with bb.function(fn_name, [param_x, param_w, param_h, param_p, param_pr]):
             with bb.dataflow():
                 gv = bb.emit_output(relax.op.matmul(param_x, param_w))
-                bb.emit(relax.op.call_dps_packed("env.mac_mul", (param_w, param_h, param_p), relax.TensorStructInfo((1, w.struct_info.shape[1]), w.struct_info.dtype)))
+                bb.emit(relax.op.call_dps_packed("env.mac_mul", (param_w, param_h, param_p, param_pr), relax.TensorStructInfo((1, w.struct_info.shape[1]), w.struct_info.dtype)))
             bb.emit_func_output(gv)
 
         # Add Primitive attribute to the fused functions
@@ -96,7 +98,7 @@ class MACMul(relax.PyExprMutator):
         global_var = self.builder_.add_func(fused_fn, fn_name)
 
         # construct call into the fused function
-        return relax.Call(global_var, [x, w, param_h, param_p], None, None)
+        return relax.Call(global_var, [x, w, param_h, param_p, param_pr], None, None)
 
 @tvm.ir.transform.module_pass(opt_level=1, name="MACMul")
 class MACMulPass:

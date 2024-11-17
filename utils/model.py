@@ -15,7 +15,7 @@ from models.mlp.mlp_interactor import MLPInteractor
 from tvm.relax.frontend.torch import from_exported_program
 
 OPTIONS = {
-    'mlp': (MLP(), MLPInteractor(), 'models/mlp/mlp.pth', torch.randn(1, 784, dtype=torch.float32), 0.025),
+    'mlp': (MLP(), MLPInteractor(), 'models/mlp/mlp.pth', torch.randn(1, 784, dtype=torch.float32), 10, [0.1, 0.1, 0.95]),
 }
 
 def mu_import(model, interactor, file_path):
@@ -83,6 +83,19 @@ def mu_integrate_hashes(mod, params, budget, secret_key):
     mod["main"] = relax.Function(list(mod["main"].params) + hv_s + pv_s, mod["main"].body)
     return mod, [tvm.nd.array(h) for h in hs], [tvm.nd.array(p) for p in ps]
 
+def mu_integrate_probabilities(mod, probabilities):
+    prs = []
+    pr_vs = []
+
+    for i,p in enumerate(probabilities):
+        name = f"p{i}"
+        prs.append([p])
+        pr_vs.append(relax.Var(name, relax.TensorStructInfo((1,), "float64")))
+    
+    mod["main"] = relax.Function(list(mod["main"].params) + pr_vs, mod["main"].body)
+    return mod, [tvm.nd.array(p) for p in prs]
+
+
 def mu_compute_hash_schedule(params, budget):
     '''
     Determine how many hashes each layer should have based on the budget.
@@ -109,7 +122,7 @@ def mu_compute_hash_schedule(params, budget):
     
     return ps, p_vs
 
-def mu_get_model_and_vm(model, interactor, file_path, ex_t, budget):
+def mu_get_model_and_vm(model, interactor, file_path, ex_t, budget, probabilities=None):
     target = 'llvm'
     device = tvm.cpu()
 
@@ -118,7 +131,8 @@ def mu_get_model_and_vm(model, interactor, file_path, ex_t, budget):
     mod = mu_export(model, ex_t) # Export model to IRModule
     mod, params = mu_detach_params(mod) # Detach parameters
     mod, hs, ps = mu_integrate_hashes(mod, params, budget, hp.get_secret_key()) # Integrate hashes into main function
+    mod, prs = mu_integrate_probabilities(mod, probabilities if probabilities is not None else [1. for _ in range(0, len(params))]) # Integrate probabilities into main function
     mod = interactor.transform(mod) # Transform IRModule
     mod, vm = mu_build(mod, target, device) # Build for our target & device
 
-    return mod, vm, params, hs, ps
+    return mod, vm, params, hs, ps, prs
