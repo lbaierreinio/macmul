@@ -35,10 +35,11 @@ def tu_get_line(model, interactor, file_path, ex_t, *, iterations_per_budget, lo
         plt.ylabel('Budget Times (ms)')      # Label for the y-axis
         plt.title('Budget Times vs. Number of Hashes')
         plt.savefig(plot_path, format='pdf')
+        plt.close()
     
     return m, b
 
-def tu_get_probability_of_detection(
+def tu_get_detection_probabilities(
         model, 
         interactor, 
         file_path, 
@@ -97,9 +98,10 @@ def tu_get_probability_of_detection(
     plt.legend(title='Number of Hashes')
     plt.grid(True)
     plt.savefig(plot_path, format='pdf')
+    plt.close()
 
-def tu_get_runtime_probabilities(model, interactor, file_path, ex_t, *, iterations_per_test, budget, probability_schedules):
-    f = open("experiments/probabilities.txt", "w")
+def tu_get_runtime_probabilities(model, interactor, file_path, ex_t, *, iterations_per_test, budget, probability_schedules, path):
+    f = open(path, "w")
     probability_schedules.insert(0, [0.] * len(probability_schedules[0]))
     for probability_schedule in probability_schedules:
         mod, vm, params, hs, ps, prs = mu.mu_get_model_and_vm(model, interactor, file_path, ex_t, budget, probability_schedule)
@@ -117,3 +119,42 @@ def tu_get_runtime_probabilities(model, interactor, file_path, ex_t, *, iteratio
         
         f.write(f"Average Run-time: {round(np.mean(times) * 1e3, 3)} (ms)\n\n")
     f.close()
+
+def tu_get_degredation(model, interactor, file_path, ex_t, *, iterations, stop_accuracy, step, plot_path):
+    
+    accuracies = []
+    num_rowhammers = []
+
+    for _ in range(0, iterations):
+        mod, vm, params, hs, ps, prs = mu.mu_get_model_and_vm(model, interactor, file_path, ex_t, 0)
+        prs = [tvm.nd.array([0.]) for _ in prs]
+        all_params = [*params, *hs, *ps, *prs]
+
+        a = []
+        num_rowhammer = []
+        
+        accuracy = interactor.test(model, vm, all_params)
+        a.append(accuracy)
+        num_rowhammer.append(0)
+        while accuracy >= stop_accuracy:
+            for _ in range(0, step):
+                params = ru.ru_rowhammer(params)
+            all_params = [*params, *hs, *ps, *prs]
+            accuracy = interactor.test(model, vm, all_params)
+            a.append(accuracy)
+            num_rowhammer.append(num_rowhammer[-1] + step)
+
+        accuracies.append(a)
+        num_rowhammers.append(num_rowhammer)
+
+    # Plot the accuracies each as separate lines
+    for i, (a, n) in enumerate(zip(accuracies, num_rowhammers)):
+        plt.plot(n, a, label=f'Run {i}', marker='o')  # Use x_axis_values
+
+    plt.xlabel('Number of Bit Flips')
+    plt.ylabel('Accuracy')
+    plt.title('Degredation of Model Accuracy')
+    plt.grid(True)
+    plt.savefig(plot_path, format='pdf')
+    plt.close()
+

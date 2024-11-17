@@ -1,4 +1,4 @@
-from utils.timer import tu_get_line
+from utils.timer import tu_get_degredation
 import utils.model as mu
 
 def main():
@@ -9,7 +9,7 @@ def main():
         model, interactor, file_path, ex_t, _, _ = mu.OPTIONS[o]
 
         # Get the line of best fit for the inference_limit we want.
-        tu_get_line(model, interactor, file_path, ex_t, iterations_per_budget=10, lo=0, hi=2000, step=200, plot_path=f"experiments/runtime_{o}.pdf")
+        tu_get_degredation(model, interactor, file_path, ex_t, iterations=5, step=10, stop_accuracy=0.25, plot_path=f"experiments/degredation_{o}.pdf")
 
 if __name__ == "__main__":
     main()

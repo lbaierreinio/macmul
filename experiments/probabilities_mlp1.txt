@@ -1,0 +1,18 @@
+---------------------SCHEDULE---------------------
+Layer 0: Probability 0.0
+Layer 1: Probability 0.0
+Layer 2: Probability 0.0
+Average Run-time: 0.443 (ms)
+
+---------------------SCHEDULE---------------------
+Layer 0: Probability 0.8
+Layer 1: Probability 0.8
+Layer 2: Probability 0.8
+Average Run-time: 1.384 (ms)
+
+---------------------SCHEDULE---------------------
+Layer 0: Probability 0.05
+Layer 1: Probability 0.05
+Layer 2: Probability 0.9
+Average Run-time: 0.81 (ms)
+
