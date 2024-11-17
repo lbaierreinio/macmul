@@ -97,8 +97,3 @@ def tu_get_probability_of_detection(
     plt.legend(title='Number of Hashes')
     plt.grid(True)
     plt.savefig(plot_path, format='pdf')
-    
-
-
-
-

@@ -84,16 +84,16 @@ def mu_integrate_hashes(mod, params, budget, secret_key):
     return mod, [tvm.nd.array(h) for h in hs], [tvm.nd.array(p) for p in ps]
 
 def mu_integrate_probabilities(mod, probabilities):
-    ps = []
-    p_vs = []
+    prs = []
+    pr_vs = []
 
     for i,p in enumerate(probabilities):
         name = f"p{i}"
-        ps.append([p])
-        p_vs.append(relax.Var(name, relax.TensorStructInfo((1,), "float32")))
+        prs.append([p])
+        pr_vs.append(relax.Var(name, relax.TensorStructInfo((1,), "float64")))
     
-    mod["main"] = relax.Function(list(mod["main"].params) + p_vs, mod["main"].body)
-    return mod, ps, p_vs
+    mod["main"] = relax.Function(list(mod["main"].params) + pr_vs, mod["main"].body)
+    return mod, [tvm.nd.array(p) for p in prs]
 
 
 def mu_compute_hash_schedule(params, budget):
@@ -131,7 +131,7 @@ def mu_get_model_and_vm(model, interactor, file_path, ex_t, budget, probabilitie
     mod = mu_export(model, ex_t) # Export model to IRModule
     mod, params = mu_detach_params(mod) # Detach parameters
     mod, hs, ps = mu_integrate_hashes(mod, params, budget, hp.get_secret_key()) # Integrate hashes into main function
-    mod, prs, pr_vs = mu_integrate_probabilities(mod, probabilities if probabilities is not None else [1. for _ in range(0, len(params))]) # Integrate probabilities into main function
+    mod, prs = mu_integrate_probabilities(mod, probabilities if probabilities is not None else [1. for _ in range(0, len(params))]) # Integrate probabilities into main function
     mod = interactor.transform(mod) # Transform IRModule
     mod, vm = mu_build(mod, target, device) # Build for our target & device
 

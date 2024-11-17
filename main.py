@@ -28,7 +28,7 @@ def main():
 
     budget = int(m * inference_limit + b)
 
-    mod, vm, params, hs, ps, prs = mu.mu_get_model_and_vm(model, interactor, file_path, ex_t, budget)
+    mod, vm, params, hs, ps, prs = mu.mu_get_model_and_vm(model, interactor, file_path, ex_t, budget, probabilities)
 
     mod.show()
     all_params = [*params, *hs, *ps, *prs]
