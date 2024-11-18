@@ -9,7 +9,7 @@ def main():
         model, interactor, file_path, ex_t, _, _ = mu.OPTIONS[o]
 
         # Get the line of best fit for the inference_limit we want.
-        tu_get_line(model, interactor, file_path, ex_t, iterations_per_budget=10, lo=0, hi=2000, step=200, plot_path=f"experiments/runtime_{o}.pdf")
+        tu_get_line(model, interactor, file_path, ex_t, iterations_per_budget=10, lo=0, hi=2000, step=25, plot_path=f"experiments/runtime_{o}.pdf")
 
 if __name__ == "__main__":
     main()
