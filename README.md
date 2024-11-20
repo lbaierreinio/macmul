@@ -1,5 +1,5 @@
 # MACMul
-The purpose of this project is to use the Apache TVM framework to implement MAC integrity protection in DNNs. This is important as Rowhammer attacks are becoming more feasible with increasing DRAM density. Attacks have shown that intelligently flipping bits a small number of bits within DNN parameters can significantly degrade the performance of the model.
+The purpose of this project is to use the Apache TVM framework to implement MAC integrity protection in DNNs. This is important as Rowhammer attacks are becoming more feasible with increasing DRAM density. Attacks have shown that intelligently flipping bits a small number of bits within DNN parameters can significantly degrade the performance of the model. A paper explaining the motivation and methodology used in this project will be added to the repository shortly.
 
 ## Steps to Run
 Update init.sh as necessary to (a) point to your installation of Apache TVM and (b) activate your conda environment.
