@@ -18,7 +18,6 @@ def ru_rowhammer(params):
     
     return params
 
-
 def ru_flip(float_num):
     if not isinstance(float_num, np.float32):
         raise ValueError("Input must be a np.float32 number.")
