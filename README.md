@@ -6,7 +6,7 @@ Update init.sh as necessary to (a) point to your installation of Apache TVM and 
 
 source init.sh
 
-python3 ./main.py [model] to ensure user interface
+python3 ./main.py [model] to enter user interface
 
 ## Codebase Structure
 ### models
