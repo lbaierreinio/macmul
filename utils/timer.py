@@ -62,7 +62,7 @@ def tu_get_detection_probabilities(
     # Each budget will correspond to a different line
     for budget in range(budget_lo, budget_hi, budget_step):
         mod, vm, params, hs, ps, prs = mu.mu_get_model_and_vm(model, interactor, file_path, ex_t, budget)
-
+        ground_truth_params = [p.copyto(tvm.cpu()) for p in params]
         probabilities = []    
         # Iterate over different bit flips
         for num_bit_flip in range(bit_flip_lo, bit_flip_hi, bit_flip_step):
@@ -80,7 +80,7 @@ def tu_get_detection_probabilities(
                     vm["main"](tvm.nd.array(ex_t), *all_params)[0]
                 except:
                     num_bit_flips_detected += 1
-            
+                params = [p.copyto(tvm.cpu()) for p in ground_truth_params]
             probabilities.append(num_bit_flips_detected / iterations_per_bit_flip)
             print(f"{budget} hashes detected {num_bit_flip} bit flips with probability {num_bit_flips_detected / iterations_per_bit_flip}")
         # Save probabilities for this budget
@@ -94,7 +94,7 @@ def tu_get_detection_probabilities(
     # Add labels, title, and legend
     plt.xlabel('Number of Bit Flips')
     plt.ylabel('Probability of Bit Flip Detection')
-    plt.title('Probability of Bit Flip Detection')
+    plt.title('Bit Flip Detection')
     plt.legend(title='Number of Hashes')
     plt.grid(True)
     plt.savefig(plot_path, format='pdf')
