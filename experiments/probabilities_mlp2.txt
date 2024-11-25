@@ -4,7 +4,7 @@ Layer 1: Probability 0.0
 Layer 2: Probability 0.0
 Layer 3: Probability 0.0
 Layer 4: Probability 0.0
-Average Run-time: 0.5 (ms)
+Average Run-time: 0.494 (ms)
 
 ---------------------SCHEDULE---------------------
 Layer 0: Probability 0.8
@@ -12,7 +12,7 @@ Layer 1: Probability 0.8
 Layer 2: Probability 0.8
 Layer 3: Probability 0.8
 Layer 4: Probability 0.8
-Average Run-time: 1.943 (ms)
+Average Run-time: 1.974 (ms)
 
 ---------------------SCHEDULE---------------------
 Layer 0: Probability 0.05

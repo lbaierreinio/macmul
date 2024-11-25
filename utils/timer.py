@@ -25,15 +25,15 @@ def tu_get_line(model, interactor, file_path, ex_t, *, iterations_per_budget, lo
         budgets.append(budget)
         time_in_ns = np.mean(budget_t) * 1e3
         budget_times.append(time_in_ns)
-        print(f"Number of Hashes: {budget} Average Run-time: {round(time_in_ns,3)} (ms)")
+        print(f"Number of Chunks: {budget} Average Run-time: {round(time_in_ns,3)} (ms)")
 
     m, b = np.polyfit(budget_times[1:], budgets[1:], 1)
 
     if plot_path is not None:
         plt.plot(budgets, budget_times, marker='o')
-        plt.xlabel('Number of Hashes')  # Label for the x-axis
-        plt.ylabel('Budget Times (ms)')      # Label for the y-axis
-        plt.title('Budget Times vs. Number of Hashes')
+        plt.xlabel('Number of Chunks')  # Label for the x-axis
+        plt.ylabel('Run-time (ms)')      # Label for the y-axis
+        plt.title('Run-time vs. Number of Chunks')
         plt.savefig(plot_path, format='pdf')
         plt.close()
     
@@ -82,20 +82,20 @@ def tu_get_detection_probabilities(
                     num_bit_flips_detected += 1
                 params = [p.copyto(tvm.cpu()) for p in ground_truth_params]
             probabilities.append(num_bit_flips_detected / iterations_per_bit_flip)
-            print(f"{budget} hashes detected {num_bit_flip} bit flips with probability {num_bit_flips_detected / iterations_per_bit_flip}")
+            print(f"{budget} chunks detected {num_bit_flip} bit flips with probability {num_bit_flips_detected / iterations_per_bit_flip}")
         # Save probabilities for this budget
         all_probabilities.append(probabilities)
         all_budgets.append(budget)
     
     # Plot the probabilities
     for i, (b, p) in enumerate(zip(all_budgets, all_probabilities)):
-        plt.plot(num_bit_flips, p, label=f'{b} Hashes', marker='o')  # Use x_axis_values
+        plt.plot(num_bit_flips, p, label=f'{b} Chunks', marker='o')  # Use x_axis_values
 
     # Add labels, title, and legend
     plt.xlabel('Number of Bit Flips')
     plt.ylabel('Probability of Bit Flip Detection')
     plt.title('Bit Flip Detection')
-    plt.legend(title='Number of Hashes')
+    plt.legend(title='Number of Chunks')
     plt.grid(True)
     plt.savefig(plot_path, format='pdf')
     plt.close()
