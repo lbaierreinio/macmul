@@ -6,7 +6,7 @@ MACMul is an integrity protection system that uses Apache TVM & CMAC-AES to dete
 - Apache TVM
 
 ## Steps to Run
-Update init.sh to point to your Apache TVM installation and the name of your conda environment (you can create your conda environment from the environment.yml file). 
+Update init.sh to point to your Apache TVM installation and the name of your conda environment (you can create your conda environment from the environment.yml file, however, you may want to change the name and prefix in the environment.yml first). 
 
 source init.sh
 
