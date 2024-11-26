@@ -26,7 +26,7 @@ b) Run the experiments in the experiments directory.
 * A set of modules with various helper functions.
 
 ### experiments
-* A set of Python files, which when run, execute, and save the results of their experiments to a pdf or txt file.
+* A set of Python files, which when run, execute, and save the results of their experiments to a pdf or txt file. You may modify the experiment files to change the set of models that they act on or the parameters of the experiment.
 
 ### main.py
 * When executed, adds protection to the DNN as specified by the parameters provided by the user, and then enters a user interface where the user can run a series of commands on the model. The commands available are listed below:
