@@ -12,8 +12,8 @@ from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 from tvm.relax.expr_functor import PyExprMutator, mutator
 
-@tvm.register_func("env.mac_mul", override=True)
-def mac_mul(w: tvm.nd.NDArray, h: tvm.nd.NDArray, p: tvm.nd.NDArray, pr: tvm.nd.NDArray, o: tvm.nd.NDArray):
+@tvm.register_func("env.check_tag", override=True)
+def check_tag(w: tvm.nd.NDArray, h: tvm.nd.NDArray, p: tvm.nd.NDArray, pr: tvm.nd.NDArray, o: tvm.nd.NDArray):
     num_hashes = np.from_dlpack(p)[0]
     mac_prob = random.random() < np.from_dlpack(pr)[0]
     if num_hashes > 0 and mac_prob:
@@ -85,12 +85,12 @@ class MACMul(relax.PyExprMutator):
         param_pr = self.params[self.counter + self.pr_starting_param]
 
         bb = relax.BlockBuilder()
-        fn_name = "mac_mul%d" % (self.counter)
+        fn_name = "check_tag%d" % (self.counter)
         self.counter += 1
         with bb.function(fn_name, [param_x, param_w, param_h, param_p, param_pr]):
             with bb.dataflow():
                 gv = bb.emit_output(relax.op.matmul(param_x, param_w))
-                bb.emit(relax.op.call_dps_packed("env.mac_mul", (param_w, param_h, param_p, param_pr), relax.TensorStructInfo((1, w.struct_info.shape[1]), w.struct_info.dtype)))
+                bb.emit(relax.op.call_dps_packed("env.check_tag", (param_w, param_h, param_p, param_pr), relax.TensorStructInfo((1, w.struct_info.shape[1]), w.struct_info.dtype)))
             bb.emit_func_output(gv)
 
         # Add Primitive attribute to the fused functions

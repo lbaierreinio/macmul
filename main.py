@@ -24,7 +24,7 @@ def main():
     model, interactor, file_path, ex_t, inference_limit, probabilities = options[args.model]
 
     # Get the line of best fit for the inference_limit we want.
-    m, b = tu.tu_get_line(model, interactor, file_path, ex_t, iterations_per_budget=10, lo=0, hi=2000, step=25)
+    m, b = tu.tu_get_line(model, interactor, file_path, ex_t, iterations_per_budget=10, lo=0, hi=100, step=25)
 
     budget = int(m * inference_limit + b)
 
