@@ -13,6 +13,7 @@ source init.sh
 From here you have two options:
 
 a) Enter the user interface via python3 ./main.py [model-name] (test models are defined under the /models directly).
+
 b) Run the experiments in the experiments directory.
 
 ## Codebase Structure
