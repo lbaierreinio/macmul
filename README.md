@@ -1,5 +1,5 @@
 # MACMul
-MACMul is an integrity protection system that uses Apache TVM & CMAC-AES to detect tampered weights in neural networks.
+MACMul is an integrity protection system that uses Apache TVM & AES-CMAC to detect tampered weights in neural networks.
 
 ## Requirements:
 - Conda
