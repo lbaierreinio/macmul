@@ -70,5 +70,5 @@ This experiment analyzes the average runtime of MLPs protected by different prob
 
 
 ## Additional Notes
-* When I import Apache TVM, the terminal displays the following error message: 'Error: Using lLVM ...'. This is expected and does not interfere with the results of the experiments or program.
+* When I import Apache TVM, the terminal displays the following error message: 'Error: Using LLVM ...'. This is expected and does not interfere with the results of the experiments or program.
 * During the security.py experiment, you may periodically see the following error messages in the console: RuntimeWarning: Overflow encountered in multiply. Again, this is fine and does not interfere with the results of the experiments. It is simply a byproduct of the bit-flips.
