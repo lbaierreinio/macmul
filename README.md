@@ -68,3 +68,7 @@ This experiment analyzes the effectiveness of random bit-flips to degrade the ac
 ### probabilities.py
 This experiment analyzes the average runtime of MLPs protected by different probability schedules, given a fixed number of chunks (1 per layer). The results of these experiments will be saved as probabilities_{model_name}.txdt
 
+
+## Additional Notes
+* When I import Apache TVM, the terminal displays the following error message: 'Error: Using lLVM ...'. This is expected and does not interfere with the results of the experiments or program.
+* During the security.py experiment, you may periodically see the following error messages in the console: RuntimeWarning: Overflow encountered in multiply. Again, this is fine and does not interfere with the results of the experiments. It is simply a byproduct of the bit-flips.
