@@ -1,6 +1,7 @@
 import os
 import tvm
 import argparse
+import numpy as np
 import utils.timer as tu
 import utils.model as mu
 import utils.rowhammer as ru
@@ -26,7 +27,7 @@ def main():
     # Get the line of best fit for the inference_limit we want.
     m, b = tu.tu_get_line(model, interactor, file_path, ex_t, iterations_per_budget=10, lo=0, hi=300, step=25)
 
-    budget = int(m * inference_limit + b)
+    budget = np.clip(int(m * inference_limit + b), 0, 1000)
 
     mod, vm, params, hs, ps, prs = mu.mu_get_model_and_vm(model, interactor, file_path, ex_t, budget, probabilities)
 
