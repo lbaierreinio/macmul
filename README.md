@@ -34,6 +34,7 @@ Note that you may want to change the name & prefix lines in the environment.yml 
 ### models
 * PyTorch model definitions and interactor classes to train and test the models.
 * If you'd like to create a new model for testing, you can do so under this directory. Note that you will also have to register your model in the OPTIONS variable in helpers/model to use it in the user interface or experiments.
+* You can also change the protection parameters of a model that you want to test within the OPTIONS variable. For example, you can change the number of chunks or the probability schedule. which are the last two variables in each entry of the OPTIONS list.
 * The behavior of this system on non-Pytorch models with layers not in [ReLU, Linear] is undefined. 
 
 ### utils
@@ -43,15 +44,15 @@ Note that you may want to change the name & prefix lines in the environment.yml 
 * A set of Python files, which when run, execute, and save the results of their experiments to a pdf or txt file. You may modify the experiment files to change the set of models that they act on or the parameters of the experiment.
 
 ### main.py
-* When executed, adds protection to the DNN as specified by the parameters provided by the user, and then enters a user interface where the user can run a series of commands on the model. The commands available are listed below:
-* st: Single Test
-* srh: Single Rowhammer
-* t: Test on entire validation set
-* rh: Perform Rowhammer attacks until validation accuracy drops below a specified ROWHAMMER_ACCURACY_THRESHOLD.
+* USAGE: `python3 ./main.py {model_name}`. The list of available model names can be found in the OPTIONS variable of utils/model.py. Currently, you can select one of 'mlp1', 'mlp2', or 'mlp3'. These will add MACMul protection to the specified model. Then, you will be able to enter the following commands into the user interface for fast experiments:
+* st: Test a single prediction
+* srh: Perform a single Rowhammer attack
+* t: Get accuracy on the entire validation accuracy
+* rh: Perform Rowhammer attacks until validation accuracy drops below a specified ROWHAMMER_ACCURACY_THRESHOLD. (Note that if the model is protected, the program will exit long before this ROWHAMMER_THRESHOLD_ACCURACY is reached).
 * q: Quit
 
 ## Running Experiments
-The experiments can be found under the experiments directory. Each experiment will produce a series of .txt or .pdf files, one for each MLP that the experiment is run on. Each .py file in the experiments directory corresponds to one experiment. It defines the MLPs that the experiments will be run on, and iterates over each MLP, calling a function in utils/timer.py that holds the underlying logic of that experiment. None of these experiments require arguments from the command line. If you’d like to change the parameters of the experiments, you can do so within the Python script directory. Finally, I recommend that you remove the existing .pdf or .txt files corresponding to the last round of experiments before running a new set of experiments. 
+The experiments can be found under the experiments directory. Each experiment will produce a series of .txt or .pdf files, one for each MLP that the experiment is run on. Each .py file in the experiments directory corresponds to one experiment. It defines the MLPs that the experiments will be run on, and iterates over each MLP, calling a function in utils/timer.py that holds the underlying logic of that experiment. None of these experiments require arguments from the command line. If you’d like to change the parameters of the experiments, you can do so within the Python script directory. Finally, I recommend that you remove the existing .pdf or .txt files corresponding to the last round of experiments before running a new set of experiments. Note that these experiments may take several minutes to run.
 
 More detail about each experiment is provided below:
 
