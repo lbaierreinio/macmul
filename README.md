@@ -14,7 +14,10 @@ The main requirements to run the code are Conda (Miniconda) and Apache TVM.
 
 `source /w/340/lucbr/miniconda3/bin/activate`
 
-- I used Conda to install the necessary dependencies to run the project. The environment.yml file corresponding to the Conda environment I used is in the repository. You can create your Conda environment based on the environment.yml file: env create -f environment.yml.
+- I used Conda to install the necessary dependencies to run the project. The environment.yml file corresponding to the Conda environment I used is in the repository. You can create your Conda environment based on the environment.yml file:
+
+`conda env create -f environment.yml`
+
 Note that you may want to change the name & prefix lines in the environment.yml file before you create your Conda environment. The name is self-explanatory, and the prefix specifies where the environment will be created. Depending on where you are running this project, you may be able to leave the prefix blank, in which case Conda will use its default environment directory.
 - If you installed Apache TVM from source, you will need to modify the PYTHONPATH environment variable to include the Python package directory for TVM, so that the MACMul project can locate it. I downloaded mine under my w/340 directory, so I used the following commands:
 
@@ -24,7 +27,8 @@ Note that you may want to change the name & prefix lines in the environment.yml 
 
 - If you are also running this on the University of Toronto comps server, you may actually be able to point to my Apache TVM installation from your directory, which would save you from having to install it yourself. I haven’t verified that this works on other accounts, but my work directory should be open.
 
-- Activate the Conda environment: 
+- Activate the Conda environment:
+  
 `conda activate [environment-name].`
 
 - Note that there is an init.sh file in this repository, which is a script containing the instructions I would run before using the project on the University of Toronto servers. You may also refer to this. Once you have followed these steps, you should be able to run experiments or enter the user interface. 
