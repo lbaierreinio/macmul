@@ -120,7 +120,7 @@ def tu_get_runtime_probabilities(model, interactor, file_path, ex_t, *, iteratio
         f.write(f"Average Run-time: {round(np.mean(times) * 1e3, 3)} (ms)\n\n")
     f.close()
 
-def tu_get_degredation(model, interactor, file_path, ex_t, *, iterations, stop_accuracy, step, plot_path):
+def tu_get_degredation(model, interactor, file_path, ex_t, *, iterations, stop_accuracy, stop_rowhammers, step, plot_path):
     
     accuracies = []
     num_rowhammers = []
@@ -136,13 +136,15 @@ def tu_get_degredation(model, interactor, file_path, ex_t, *, iterations, stop_a
         accuracy = interactor.test(model, vm, all_params)
         a.append(accuracy)
         num_rowhammer.append(0)
-        while accuracy >= stop_accuracy:
+        total = 0
+        while total < stop_rowhammers and accuracy >= stop_accuracy:
             for _ in range(0, step):
                 params = ru.ru_rowhammer(params)
             all_params = [*params, *hs, *ps, *prs]
             accuracy = interactor.test(model, vm, all_params)
             a.append(accuracy)
             num_rowhammer.append(num_rowhammer[-1] + step)
+            total += step
 
         accuracies.append(a)
         num_rowhammers.append(num_rowhammer)
