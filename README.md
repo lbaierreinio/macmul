@@ -52,7 +52,7 @@ Note that you may want to change the name & prefix lines in the environment.yml 
 * q: Quit
 
 ## Running Experiments
-The experiments can be found under the experiments directory. Each experiment will produce a series of .txt or .pdf files, one for each MLP that the experiment is run on. Each .py file in the experiments directory corresponds to one experiment. It defines the MLPs that the experiments will be run on, and iterates over each MLP, calling a function in utils/timer.py that holds the underlying logic of that experiment. None of these experiments require arguments from the command line. If you’d like to change the parameters of the experiments, you can do so within the Python script directory. Finally, I recommend that you remove the existing .pdf or .txt files corresponding to the last round of experiments before running a new set of experiments. Note that these experiments may take several minutes to run.
+The experiments can be found under the experiments directory. Each experiment will produce a series of .txt or .pdf files, one for each MLP that the experiment is run on. Each .py file in the experiments directory corresponds to one experiment. It defines the MLPs that the experiments will be run on, and iterates over each MLP, calling a function in utils/timer.py that holds the underlying logic of that experiment. None of these experiments require arguments from the command line. If you’d like to change the parameters of the experiments, you can do so within the Python script directory. The experiments will overwrite the results of the previous experiments. Note that some experiments may take at least a few minutes to run, or more, if you modify the parameters of the experiment.
 
 More detail about each experiment is provided below:
 
