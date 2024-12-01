@@ -45,10 +45,13 @@ def main():
             elif choice == 'rh': # Rowhammer until certain threshold is met
                 print("Launching Rowhammer attack...")
                 accuracy = 1
+                total = 0
                 while accuracy > ROWHAMMER_ACCURACY_THRESHOLD:
                     for _ in range(10):
                         ru.ru_rowhammer(params)
+                    total += 10
                     accuracy = interactor.test(model, vm, all_params)
+                    print(f"Total Rowhammer attacks: {total}")
                     print(f"Accuracy: {accuracy:.4f}")
             elif choice == 'q': # Quit
                 break
